@@ -1,6 +1,10 @@
 # StardewValleyFOMO
 
-This project is a .NET C# console application.
+Stardew Valley mod to help deal with FOMO
+
+## Dependencies
+- SMAPI
+- StardewUI
 
 ## Getting Started
 
