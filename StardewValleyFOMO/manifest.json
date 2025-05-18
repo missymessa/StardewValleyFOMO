@@ -1,0 +1,10 @@
+{
+  "Name": "StardewValleyFOMO",
+  "Author": "ladyithis",
+  "Version": "1.0.0",
+  "Description": "A mod for Stardew Valley.",
+  "UniqueID": "ladyithis.StardewValleyFOMO",
+  "EntryDll": "StardewValleyFOMO.dll",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": []
+}
