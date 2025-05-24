@@ -1,14 +1,11 @@
-using System;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
-using StardewModdingAPI.Utilities;
 using StardewValley;
 using StardewUI.Framework;
 using StardewUITest.Examples;
 using StardewUITest;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace StardewValleyFOMO
 {
@@ -49,7 +46,64 @@ namespace StardewValleyFOMO
                 case SButton.F8:
                     ShowGallery();
                     break;
+                case SButton.F9: // Example: Get bundle data when F9 is pressed
+                    GetCommunityCenterData();
+                    break;
             }
+        }
+
+        private void GetCommunityCenterData()
+        {
+            this.Monitor.Log("--- Retrieving Community Center Bundle Data ---", LogLevel.Info);
+
+            // 1. Game1.netWorldState.Value.Bundles (NetDictionary<int, bool[]>)
+            //    - Key (int): Community Center Area ID.
+            //    - Value (bool[]): Completion status of all item slots in that area.
+            var areaBundleCompletionStatus = Game1.netWorldState.Value.Bundles;
+            if (areaBundleCompletionStatus != null)
+            {
+                this.Monitor.Log("--- Area Bundle Completion Status (Game1.netWorldState.Value.Bundles) ---", LogLevel.Debug);
+                if (!areaBundleCompletionStatus.Pairs.Any())
+                {
+                    this.Monitor.Log("  No data in Game1.netWorldState.Value.Bundles.", LogLevel.Debug);
+                }
+                foreach (var pair in areaBundleCompletionStatus.Pairs)
+                {
+                    // Example: Key = 3 (Pantry area ID), Value = [true, true, false, ...]
+                    this.Monitor.Log($"  Area ID: {pair.Key} -> Item Slots Status: [{string.Join(", ", pair.Value)}]", LogLevel.Debug);
+                }
+            }
+            else
+            {
+                this.Monitor.Log("  Game1.netWorldState.Value.Bundles is null.", LogLevel.Warn);
+            }
+
+            // 2. Game1.netWorldState.Value.BundleData (Dictionary<string, string>)
+            //    - Key (string): Bundle identifier, e.g., "Pantry/0".
+            //    - Value (string): Bundle definition string, e.g., "Spring Crops/20 Spring Seeds/1 495 1 0,1 496 1 0,.../0/0".
+            var bundleDefinitions = Game1.netWorldState.Value.BundleData;
+            if (bundleDefinitions != null)
+            {
+                this.Monitor.Log("--- Bundle Definitions (Game1.netWorldState.Value.BundleData) ---", LogLevel.Debug);
+                if (!bundleDefinitions.Any())
+                {
+                    this.Monitor.Log("  No data in Game1.netWorldState.Value.BundleData.", LogLevel.Debug);
+                }
+                foreach (KeyValuePair<string, string> pair in bundleDefinitions)
+                {
+                    this.Monitor.Log($"  Bundle Key: \"{pair.Key}\" -> Definition: \"{pair.Value}\"", LogLevel.Debug);
+                }
+            }
+            else
+            {
+                this.Monitor.Log("  Game1.netWorldState.Value.BundleData is null.", LogLevel.Warn);
+            }
+
+            // The previous complex logic for player-specific contributions has been removed for clarity
+            // as per the request to display all data in `bundles` and `bundleData` directly.
+            // To get player-specific contributions, you would iterate through CommunityCenter.getBundle(index).playersWhoDonatedList
+            // after loading Data/Bundles.xnb to map bundle indices correctly, as shown in prior versions.
+            this.Monitor.Log("--- Finished Displaying Bundle Data ---", LogLevel.Info);
         }
 
         private void GameLoop_GameLaunched(object? sender, GameLaunchedEventArgs e)
