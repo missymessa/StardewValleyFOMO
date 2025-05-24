@@ -50,9 +50,9 @@ namespace StardewValleyFOMO.Lib
 
     public class BundleItem
     {
-        public int Id { get; } // Name of the item in the bundle
-        public int Count { get; } // Quantity of the item in the bundle
-        public int MinQuality { get; } // Minimum quality of the item (if applicable)
+        public int Id { get; } 
+        public int Count { get; } 
+        public int MinQuality { get; } 
         public BundleItem(int id, int count, int minQuality)
         {
             Id = id;
