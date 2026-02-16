@@ -3,10 +3,15 @@ name: Create Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Release version (e.g., 1.0.0)'
+      bump_type:
+        description: 'Version bump type'
         required: true
-        type: string
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
       prerelease:
         description: 'Mark as pre-release'
         required: false
@@ -16,26 +21,75 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-
-    - name: Download mod from latest artifact (if available)
-      uses: dawidd6/action-download-artifact@v3
-      continue-on-error: true
       with:
-        workflow: build.yml
-        name: uploaded-mod
-        path: mod-files
+        token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Create release
+    - name: Get current version
+      id: get_version
+      run: |
+        CURRENT_VERSION=$(jq -r '.Version' src/StardewFOMO.Mod/manifest.json)
+        echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        echo "Current version: $CURRENT_VERSION"
+
+    - name: Calculate new version
+      id: calc_version
+      run: |
+        CURRENT="${{ steps.get_version.outputs.current_version }}"
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+        
+        case "${{ github.event.inputs.bump_type }}" in
+          major)
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            ;;
+          minor)
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            ;;
+          patch)
+            PATCH=$((PATCH + 1))
+            ;;
+        esac
+        
+        NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+        echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "New version: $NEW_VERSION (bumped ${{ github.event.inputs.bump_type }})"
+
+    - name: Update manifest.json
+      run: |
+        NEW_VERSION="${{ steps.calc_version.outputs.new_version }}"
+        jq ".Version = \"$NEW_VERSION\"" src/StardewFOMO.Mod/manifest.json > tmp.json
+        mv tmp.json src/StardewFOMO.Mod/manifest.json
+        echo "Updated manifest.json to version $NEW_VERSION"
+        cat src/StardewFOMO.Mod/manifest.json
+
+    - name: Commit version bump
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add src/StardewFOMO.Mod/manifest.json
+        git commit -m "Bump version to ${{ steps.calc_version.outputs.new_version }}"
+        git push
+
+    - name: Create release tag
+      run: |
+        git tag "v${{ steps.calc_version.outputs.new_version }}"
+        git push origin "v${{ steps.calc_version.outputs.new_version }}"
+
+    - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: v${{ github.event.inputs.version }}
-        name: Stardew Valley FOMO v${{ github.event.inputs.version }}
+        tag_name: v${{ steps.calc_version.outputs.new_version }}
+        name: Stardew Valley FOMO v${{ steps.calc_version.outputs.new_version }}
         body: |
-          ## Stardew Valley FOMO - Daily Planner v${{ github.event.inputs.version }}
+          ## Stardew Valley FOMO - Daily Planner v${{ steps.calc_version.outputs.new_version }}
           
           ### Installation
           1. Install [SMAPI](https://smapi.io/) 4.0 or later
@@ -48,7 +102,12 @@ jobs:
           
           ---
           
-          **Note:** If no zip file is attached, please download the latest build from the [Actions](../../actions) tab.
+          **Note:** To attach the mod zip file, build locally and upload:
+          ```
+          dotnet build -c Release
+          ```
+          Then edit this release and upload:
+          `src/StardewFOMO.Mod/bin/Release/net6.0/StardewFOMO.Mod ${{ steps.calc_version.outputs.new_version }}.zip`
         prerelease: ${{ github.event.inputs.prerelease }}
         generate_release_notes: true
       env:

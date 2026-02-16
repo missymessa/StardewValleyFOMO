@@ -90,11 +90,14 @@ The release zip is generated at `src/StardewFOMO.Mod/bin/Release/net6.0/StardewF
 
 ### Creating a Release
 
-1. Build the mod locally: `dotnet build -c Release`
-2. Go to GitHub → Actions → "Create Release"
-3. Enter the version number (e.g., `1.0.1`)
-4. Run the workflow
-5. Edit the created release and upload the zip from your local build
+1. Go to GitHub → Actions → **"Create Release"**
+2. Select the version bump type:
+   - **patch** (1.0.0 → 1.0.1) - Bug fixes
+   - **minor** (1.0.0 → 1.1.0) - New features
+   - **major** (1.0.0 → 2.0.0) - Breaking changes
+3. Run the workflow (version is auto-incremented from manifest.json)
+4. Build locally: `dotnet build -c Release`
+5. Edit the release and upload the zip from your local build
 
 ## Project Structure
 
