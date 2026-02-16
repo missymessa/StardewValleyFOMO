@@ -16,7 +16,8 @@ public enum PlannerTab
     Bundles,
     Birthdays,
     Tomorrow,
-    Collections
+    Collections,
+    Perfection
 }
 
 /// <summary>
@@ -42,13 +43,15 @@ public sealed class PlannerOverlay : IClickableMenu
         PlannerTab.Bundles,
         PlannerTab.Birthdays,
         PlannerTab.Tomorrow,
-        PlannerTab.Collections
+        PlannerTab.Collections,
+        PlannerTab.Perfection
     };
 
     private DailySummary? _summary;
     private BundleProgressService? _bundleProgressService;
     private IBundleRepository? _bundleRepository;
     private BundleAvailabilityService? _bundleAvailabilityService;
+    private PerfectionCalculatorService? _perfectionService;
     private PlannerTab _activeTab = PlannerTab.Today;
     private int _scrollOffset;
     private int _contentHeight;
@@ -57,7 +60,7 @@ public sealed class PlannerOverlay : IClickableMenu
 
     private Rectangle _panelBounds;
     private Rectangle _closeButtonBounds;
-    private readonly Rectangle[] _tabBounds = new Rectangle[6];
+    private readonly Rectangle[] _tabBounds = new Rectangle[7];
 
     // Birthday hover tracking
     private readonly List<(Rectangle Bounds, NpcBirthday Birthday)> _birthdayHitboxes = new();
@@ -105,6 +108,12 @@ public sealed class PlannerOverlay : IClickableMenu
         _bundleProgressService = progressService;
         _bundleRepository = bundleRepository;
         _bundleAvailabilityService = availabilityService;
+    }
+
+    /// <summary>Set the perfection calculator service for the Perfection tab.</summary>
+    public void SetPerfectionService(PerfectionCalculatorService? perfectionService)
+    {
+        _perfectionService = perfectionService;
     }
 
     /// <summary>Set the default availability filter state from config.</summary>
@@ -241,6 +250,9 @@ public sealed class PlannerOverlay : IClickableMenu
                 break;
             case PlannerTab.Collections:
                 DrawCollectionsTab(b, x, ref y, maxWidth);
+                break;
+            case PlannerTab.Perfection:
+                DrawPerfectionTab(b, x, ref y, maxWidth);
                 break;
         }
 
@@ -815,6 +827,82 @@ public sealed class PlannerOverlay : IClickableMenu
             }
         }
         y += SectionSpacing;
+    }
+
+    private void DrawPerfectionTab(SpriteBatch b, int x, ref int y, int maxWidth)
+    {
+        if (_perfectionService == null)
+        {
+            DrawSectionTitle(b, "🎯 Perfection Tracker", x, ref y, Color.Yellow);
+            y += 8;
+            DrawText(b, "  Perfection data not available.", x, ref y, Color.LightGray);
+            return;
+        }
+
+        var progress = _perfectionService.GetProgress();
+
+        // Header with overall percentage
+        var headerColor = progress.IsComplete ? Color.Gold : Color.Yellow;
+        DrawSectionTitle(b, $"🎯 Perfection: {progress.TotalPercentage:F1}%", x, ref y, headerColor);
+        y += 8;
+
+        // Progress bar
+        DrawProgressBar(b, x + 16, y, maxWidth - 32, 20, progress.TotalPercentage / 100.0);
+        y += 28;
+
+        // Ginger Island status
+        if (!progress.GingerIslandUnlocked)
+        {
+            DrawText(b, "  🏝️ Ginger Island not yet unlocked", x, ref y, Color.Orange);
+            y += 8;
+        }
+
+        // Congratulations message if perfect
+        if (progress.IsComplete)
+        {
+            DrawText(b, "  ✨ Congratulations! You've achieved 100% Perfection! ✨", x, ref y, Color.Gold);
+            y += SectionSpacing;
+        }
+
+        // Category breakdown
+        y += 8;
+        foreach (var category in progress.Categories)
+        {
+            DrawPerfectionCategory(b, category, x, ref y, maxWidth);
+        }
+    }
+
+    private void DrawPerfectionCategory(SpriteBatch b, PerfectionCategory category, int x, ref int y, int maxWidth)
+    {
+        var statusIcon = category.IsComplete ? "✓" : "○";
+        var color = category.IsComplete ? Color.LightGreen : Color.White;
+        var percentText = $"{category.PercentComplete:F1}%";
+        var countText = $"({category.CurrentCount}/{category.TotalCount})";
+        var weightText = $"[{category.Weight:F0}%]";
+
+        var line = $"  {statusIcon} {category.CategoryName}: {percentText} {countText} {weightText}";
+        DrawText(b, line, x, ref y, color);
+    }
+
+    private void DrawProgressBar(SpriteBatch b, int x, int y, int width, int height, double fillPercent)
+    {
+        // Background
+        b.Draw(Game1.staminaRect, new Rectangle(x, y, width, height), Color.DarkGray);
+
+        // Fill
+        var fillWidth = (int)(width * Math.Min(fillPercent, 1.0));
+        if (fillWidth > 0)
+        {
+            var fillColor = fillPercent >= 1.0 ? Color.Gold : Color.LimeGreen;
+            b.Draw(Game1.staminaRect, new Rectangle(x, y, fillWidth, height), fillColor);
+        }
+
+        // Border
+        var borderColor = Color.White * 0.5f;
+        b.Draw(Game1.staminaRect, new Rectangle(x, y, width, 2), borderColor);
+        b.Draw(Game1.staminaRect, new Rectangle(x, y + height - 2, width, 2), borderColor);
+        b.Draw(Game1.staminaRect, new Rectangle(x, y, 2, height), borderColor);
+        b.Draw(Game1.staminaRect, new Rectangle(x + width - 2, y, 2, height), borderColor);
     }
 
     private void DrawBirthdayTooltip(SpriteBatch b)

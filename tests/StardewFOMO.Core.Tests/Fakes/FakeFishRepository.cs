@@ -10,6 +10,14 @@ public sealed class FakeFishRepository : IFishRepository
 
     public void AddFish(CollectibleItem fish) => _allFish.Add(fish);
 
+    /// <summary>Add a simple fish with just an ID for testing.</summary>
+    public void AddFish(string fishId) => _allFish.Add(new CollectibleItem
+    {
+        Id = fishId,
+        Name = fishId,
+        CollectionType = CollectionType.Fish
+    });
+
     public IReadOnlyList<CollectibleItem> GetAllFish() => _allFish.AsReadOnly();
 
     public IReadOnlyList<CollectibleItem> GetFishBySeasonAndWeather(Season season, Weather weather) =>

@@ -23,4 +23,13 @@ public sealed class ModConfig
 
     /// <summary>Whether to show HUD notifications when picking up bundle items. Default: true.</summary>
     public bool EnableBundleNotifications { get; set; } = true;
+
+    /// <summary>Whether to show the Perfection tracking tab. Default: true.</summary>
+    public bool ShowPerfectionTab { get; set; } = true;
+
+    /// <summary>Whether to show "★ [HAVE]" indicators on owned perfection items. Default: true.</summary>
+    public bool PerfectionShowOwnedIndicator { get; set; } = true;
+
+    /// <summary>Whether to highlight items available today on the Perfection tab. Default: true.</summary>
+    public bool PerfectionShowAvailableToday { get; set; } = true;
 }

@@ -339,6 +339,40 @@ public sealed class ModEntry : StardewModdingAPI.Mod
         var itemAvailability = new ItemAvailabilityAdapter(gameState, fishRepo, forageRepo);
         var bundleAvailability = new BundleAvailabilityService(_bundleAdapter, itemAvailability, logger);
 
+        // Create perfection tracking services
+        var perfectionAdapter = new PerfectionAdapter();
+        var monsterAdapter = new MonsterAdapter();
+        var stardropAdapter = new StardropAdapter();
+        var walnutAdapter = new WalnutAdapter();
+        var skillAdapter = new SkillAdapter();
+        var buildingAdapter = new BuildingAdapter();
+        var friendshipAdapter = new FriendshipAdapter();
+
+        var shippingService = new ShippingProgressService(collectionRepo, logger);
+        var fishService = new FishProgressService(collectionRepo, fishRepo, logger);
+        var cookingService = new CookingProgressService(collectionRepo, recipeRepo, logger);
+        var craftingService = new CraftingProgressService(collectionRepo, recipeRepo, logger);
+        var friendshipService = new FriendshipProgressService(friendshipAdapter, logger);
+        var buildingService = new BuildingProgressService(buildingAdapter, logger);
+        var monsterService = new MonsterProgressService(monsterAdapter, logger);
+        var stardropService = new StardropProgressService(stardropAdapter, logger);
+        var walnutService = new WalnutProgressService(walnutAdapter, perfectionAdapter, logger);
+        var skillService = new SkillProgressService(skillAdapter, logger);
+
+        var perfectionCalculator = new PerfectionCalculatorService(
+            shippingService,
+            fishService,
+            cookingService,
+            craftingService,
+            friendshipService,
+            buildingService,
+            monsterService,
+            stardropService,
+            walnutService,
+            skillService,
+            perfectionAdapter,
+            logger);
+
         _summaryService = new DailySummaryService(
             fishAvailability,
             forageAvailability,
@@ -352,6 +386,7 @@ public sealed class ModEntry : StardewModdingAPI.Mod
 
         // Wire bundle services to overlay
         _overlay.SetBundleServices(_bundleProgressService, _bundleAdapter, bundleAvailability);
+        _overlay.SetPerfectionService(perfectionCalculator);
         _overlay.SetAvailabilityFilterDefault(_config.AvailabilityFilterDefault);
 
         _isInitialized = true;
