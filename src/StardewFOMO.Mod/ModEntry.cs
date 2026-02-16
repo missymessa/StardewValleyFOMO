@@ -17,6 +17,10 @@ public sealed class ModEntry : StardewModdingAPI.Mod
     private ModConfig _config = null!;
     private PlannerOverlay _overlay = null!;
     private DailySummaryService _summaryService = null!;
+    private BundleProgressService _bundleProgressService = null!;
+    private BundleNotificationService? _bundleNotificationService;
+    private BundleAdapter _bundleAdapter = null!;
+    private StorageScannerAdapter? _storageScanner;
     private bool _isInitialized;
     
     // Scroll suppression state
@@ -38,6 +42,8 @@ public sealed class ModEntry : StardewModdingAPI.Mod
         helper.Events.Input.ButtonPressed += OnButtonPressed;
         helper.Events.Input.MouseWheelScrolled += OnMouseWheelScrolled;
         helper.Events.Display.RenderedHud += OnRenderedHud;
+        helper.Events.Player.InventoryChanged += OnInventoryChanged;
+        helper.Events.Player.Warped += OnPlayerWarped;
 
         Monitor.Log("StardewFOMO Daily Planner loaded.", LogLevel.Info);
     }
@@ -102,6 +108,30 @@ public sealed class ModEntry : StardewModdingAPI.Mod
             max: 14
         );
 
+        // Bundle Tracker section
+        gmcm.AddSectionTitle(
+            mod: ModManifest,
+            text: () => "Bundle Tracker Settings"
+        );
+
+        // Availability filter default
+        gmcm.AddBoolOption(
+            mod: ModManifest,
+            getValue: () => _config.AvailabilityFilterDefault,
+            setValue: value => _config.AvailabilityFilterDefault = value,
+            name: () => "Default Availability Filter",
+            tooltip: () => "Whether to start with 'Available Today' filter enabled in Bundles tab."
+        );
+
+        // Bundle notifications
+        gmcm.AddBoolOption(
+            mod: ModManifest,
+            getValue: () => _config.EnableBundleNotifications,
+            setValue: value => _config.EnableBundleNotifications = value,
+            name: () => "Bundle Item Notifications",
+            tooltip: () => "Show HUD notification when you pick up an item needed for a bundle."
+        );
+
         Monitor.Log("Registered with Generic Mod Config Menu.", LogLevel.Info);
     }
 
@@ -125,6 +155,9 @@ public sealed class ModEntry : StardewModdingAPI.Mod
         if (!_isInitialized)
             return;
 
+        // Invalidate storage cache at day start
+        _storageScanner?.InvalidateCache();
+
         try
         {
             var summary = _overlay.IsVisible
@@ -146,6 +179,43 @@ public sealed class ModEntry : StardewModdingAPI.Mod
         _overlay.ResetSession();
         _isInitialized = false;
         Monitor.Log("Returned to title — session reset.", LogLevel.Debug);
+    }
+
+    private void OnInventoryChanged(object? sender, InventoryChangedEventArgs e)
+    {
+        if (!_isInitialized || !e.IsLocalPlayer)
+            return;
+
+        // Invalidate storage cache when inventory changes
+        _storageScanner?.InvalidateCache();
+
+        // Check for bundle item notifications if enabled
+        if (_config.EnableBundleNotifications && _bundleNotificationService != null)
+        {
+            foreach (var item in e.Added)
+            {
+                var itemId = item.ItemId;
+                var itemName = item.DisplayName ?? item.Name ?? itemId;
+                var notification = _bundleNotificationService.CheckForBundleItem(itemId, itemName);
+                if (notification != null)
+                {
+                    Game1.addHUDMessage(new HUDMessage(notification, HUDMessage.newQuest_type));
+                }
+            }
+        }
+    }
+
+    private void OnPlayerWarped(object? sender, WarpedEventArgs e)
+    {
+        if (!_isInitialized || !e.IsLocalPlayer)
+            return;
+
+        // Invalidate storage cache when leaving the Community Center
+        if (e.OldLocation?.Name == "CommunityCenter")
+        {
+            _storageScanner?.InvalidateCache();
+            Monitor.Log("Player left Community Center — storage cache invalidated.", LogLevel.Debug);
+        }
     }
 
     private void OnButtonsChanged(object? sender, ButtonsChangedEventArgs e)
@@ -242,7 +312,8 @@ public sealed class ModEntry : StardewModdingAPI.Mod
     {
         var logger = new SmapiLoggerAdapter(Monitor);
         var gameState = new GameStateAdapter();
-        var bundleRepo = new BundleAdapter();
+        _bundleAdapter = new BundleAdapter();
+        _storageScanner = new StorageScannerAdapter();
         var collectionRepo = new CollectionAdapter();
         var inventoryProvider = new InventoryAdapter();
         var npcRepo = new NpcAdapter();
@@ -252,11 +323,21 @@ public sealed class ModEntry : StardewModdingAPI.Mod
 
         var fishAvailability = new FishAvailabilityService(fishRepo, gameState, collectionRepo, inventoryProvider, logger);
         var forageAvailability = new ForageAvailabilityService(forageRepo, gameState, collectionRepo, inventoryProvider, logger);
-        var bundleTracking = new BundleTrackingService(bundleRepo, inventoryProvider, logger);
+        var bundleTracking = new BundleTrackingService(_bundleAdapter, inventoryProvider, logger);
         var collectionTracking = new CollectionTrackingService(collectionRepo, inventoryProvider, recipeRepo, logger);
         var birthdayService = new BirthdayService(npcRepo, gameState, logger, _config.BirthdayLookaheadDays);
         var tomorrowPreview = new TomorrowPreviewService(gameState, fishRepo, forageRepo, collectionRepo, logger);
         var seasonAlert = new SeasonAlertService(gameState, fishRepo, forageRepo, collectionRepo, logger, _config.SeasonAlertDays);
+
+        // Create bundle progress service for the Bundles tab
+        _bundleProgressService = new BundleProgressService(_bundleAdapter, logger);
+
+        // Create bundle notification service for pickup alerts
+        _bundleNotificationService = new BundleNotificationService(_bundleAdapter, logger);
+
+        // Create item availability adapter for filtering
+        var itemAvailability = new ItemAvailabilityAdapter(gameState, fishRepo, forageRepo);
+        var bundleAvailability = new BundleAvailabilityService(_bundleAdapter, itemAvailability, logger);
 
         _summaryService = new DailySummaryService(
             fishAvailability,
@@ -268,6 +349,10 @@ public sealed class ModEntry : StardewModdingAPI.Mod
             seasonAlert,
             gameState,
             logger);
+
+        // Wire bundle services to overlay
+        _overlay.SetBundleServices(_bundleProgressService, _bundleAdapter, bundleAvailability);
+        _overlay.SetAvailabilityFilterDefault(_config.AvailabilityFilterDefault);
 
         _isInitialized = true;
     }

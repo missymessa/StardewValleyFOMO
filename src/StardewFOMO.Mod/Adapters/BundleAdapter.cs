@@ -104,4 +104,56 @@ public sealed class BundleAdapter : IBundleRepository
         var cc = Game1.getLocationFromName("CommunityCenter") as CommunityCenter;
         return cc != null;
     }
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> GetAllRooms()
+    {
+        var rooms = GetAllBundles()
+            .Select(b => b.RoomName)
+            .Distinct()
+            .OrderBy(r => GetRoomSortOrder(r))
+            .ToList();
+        return rooms.AsReadOnly();
+    }
+
+    /// <inheritdoc/>
+    public RoomProgress GetRoomProgress(string roomName)
+    {
+        var bundles = GetBundlesByRoom(roomName);
+        return new RoomProgress
+        {
+            RoomName = roomName,
+            TotalBundles = bundles.Count,
+            CompletedBundles = bundles.Count(b => b.IsComplete)
+        };
+    }
+
+    /// <inheritdoc/>
+    public IReadOnlyList<BundleInfo> GetBundlesByRoom(string roomName) =>
+        GetAllBundles()
+            .Where(b => b.RoomName.Equals(roomName, StringComparison.OrdinalIgnoreCase))
+            .ToList()
+            .AsReadOnly();
+
+    /// <inheritdoc/>
+    public bool IsCommunityComplete()
+    {
+        if (!IsCommunityCenterActive())
+            return false;
+
+        var allBundles = GetAllBundles();
+        return allBundles.Count > 0 && allBundles.All(b => b.IsComplete);
+    }
+
+    /// <summary>Get sort order for rooms to display in canonical order.</summary>
+    private static int GetRoomSortOrder(string roomName) => roomName.ToLowerInvariant() switch
+    {
+        "crafts room" => 0,
+        "pantry" => 1,
+        "fish tank" => 2,
+        "boiler room" => 3,
+        "bulletin board" => 4,
+        "vault" => 5,
+        _ => 99
+    };
 }

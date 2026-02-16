@@ -3,6 +3,8 @@ using Microsoft.Xna.Framework.Graphics;
 using StardewValley;
 using StardewValley.Menus;
 using StardewFOMO.Core.Models;
+using StardewFOMO.Core.Services;
+using StardewFOMO.Core.Interfaces;
 
 namespace StardewFOMO.Mod.UI;
 
@@ -44,9 +46,14 @@ public sealed class PlannerOverlay : IClickableMenu
     };
 
     private DailySummary? _summary;
+    private BundleProgressService? _bundleProgressService;
+    private IBundleRepository? _bundleRepository;
+    private BundleAvailabilityService? _bundleAvailabilityService;
     private PlannerTab _activeTab = PlannerTab.Today;
     private int _scrollOffset;
     private int _contentHeight;
+    private bool _showAvailableTodayOnly;
+    private Rectangle _availabilityFilterButtonBounds;
 
     private Rectangle _panelBounds;
     private Rectangle _closeButtonBounds;
@@ -89,6 +96,23 @@ public sealed class PlannerOverlay : IClickableMenu
         _hoveredBirthday = null;
     }
 
+    /// <summary>Set the bundle progress service for the Bundles tab.</summary>
+    public void SetBundleServices(
+        BundleProgressService? progressService, 
+        IBundleRepository? bundleRepository,
+        BundleAvailabilityService? availabilityService = null)
+    {
+        _bundleProgressService = progressService;
+        _bundleRepository = bundleRepository;
+        _bundleAvailabilityService = availabilityService;
+    }
+
+    /// <summary>Set the default availability filter state from config.</summary>
+    public void SetAvailabilityFilterDefault(bool enabled)
+    {
+        _showAvailableTodayOnly = enabled;
+    }
+
     /// <summary>Reset session state (called on game restart/load).</summary>
     public void ResetSession()
     {
@@ -97,6 +121,7 @@ public sealed class PlannerOverlay : IClickableMenu
         _summary = null;
         _birthdayHitboxes.Clear();
         _hoveredBirthday = null;
+        _showAvailableTodayOnly = false;
     }
 
     private void RecalculateBounds()
@@ -475,17 +500,93 @@ public sealed class PlannerOverlay : IClickableMenu
 
     private void DrawBundlesTab(SpriteBatch b, int x, ref int y, int maxWidth)
     {
-        DrawSectionTitle(b, "📦 Bundle Items Available Today", x, ref y, Color.Yellow);
-        y += 8;
-
-        if (_summary!.BundleNeededItems.Count == 0)
+        // Check if bundle progress service is available
+        if (_bundleProgressService == null || _bundleRepository == null)
         {
-            DrawText(b, "  No bundle items available today.", x, ref y, Color.LightGray);
-            DrawText(b, "  All bundles may be complete, or today's", x, ref y, Color.LightGray);
-            DrawText(b, "  collectibles aren't needed for bundles.", x, ref y, Color.LightGray);
+            DrawSectionTitle(b, "📦 Bundle Tracker", x, ref y, Color.Yellow);
+            DrawText(b, "  Bundle tracking loading...", x, ref y, Color.LightGray);
+            y += SectionSpacing;
+            return;
         }
-        else
+
+        // Check if Community Center is active
+        if (!_bundleRepository.IsCommunityCenterActive())
         {
+            DrawSectionTitle(b, "📦 Community Center", x, ref y, Color.Gray);
+            y += 8;
+            DrawText(b, "  You chose the Joja Mart route.", x, ref y, Color.LightGray);
+            DrawText(b, "  Community Center bundles are", x, ref y, Color.LightGray);
+            DrawText(b, "  not available.", x, ref y, Color.LightGray);
+            y += SectionSpacing;
+            return;
+        }
+
+        // Check if CC is complete
+        if (_bundleProgressService.IsCommunityComplete())
+        {
+            DrawSectionTitle(b, "🎉 Community Center Complete!", x, ref y, Color.Gold);
+            y += 8;
+            DrawText(b, "  Congratulations!", x, ref y, Color.LightGreen);
+            DrawText(b, "  You've restored the Community Center!", x, ref y, Color.LightGreen);
+            DrawText(b, "  The Junimos thank you!", x, ref y, Color.LightGreen);
+            y += SectionSpacing;
+            return;
+        }
+
+        // Overall progress header
+        var overallProgress = _bundleProgressService.GetOverallProgress();
+        DrawSectionTitle(b, "📦 Community Center Progress", x, ref y, Color.Yellow);
+        y += 4;
+        
+        // Draw overall progress bar
+        DrawProgressBar(b, x + 16, y, maxWidth - 32, 16, overallProgress.PercentComplete, Color.Gold);
+        y += 24;
+        DrawText(b, $"  {overallProgress.CompletedBundles}/{overallProgress.TotalBundles} bundles complete ({overallProgress.PercentComplete}%)", x, ref y, Color.White);
+        
+        // Availability filter toggle button
+        var filterText = _showAvailableTodayOnly ? "[✓] Available Today" : "[ ] Available Today";
+        var filterColor = _showAvailableTodayOnly ? Color.LightGreen : Color.Gray;
+        _availabilityFilterButtonBounds = new Rectangle(x + 16, y + 4, 200, 28);
+        DrawText(b, $"  {filterText}", x, ref y, filterColor);
+        y += SectionSpacing;
+
+        // Draw each room
+        var roomProgressList = _bundleProgressService.GetRoomProgressList();
+        foreach (var roomProgress in roomProgressList)
+        {
+            // Room header with progress
+            var roomColor = roomProgress.IsComplete ? Color.LightGreen : Color.LightBlue;
+            var roomIcon = roomProgress.IsComplete ? "✓" : "○";
+            DrawText(b, $"  {roomIcon} {roomProgress.RoomName}", x, ref y, roomColor);
+            
+            // Room progress bar (smaller)
+            DrawProgressBar(b, x + 32, y, maxWidth - 64, 10, roomProgress.PercentComplete, 
+                roomProgress.IsComplete ? Color.LightGreen : Color.CornflowerBlue);
+            y += 16;
+
+            // Bundle details within room
+            var bundleCounts = _bundleProgressService.GetBundleCountsForRoom(roomProgress.RoomName);
+            foreach (var bundle in bundleCounts)
+            {
+                var bundleIcon = bundle.IsComplete ? "★" : "·";
+                var bundleColor = bundle.IsComplete ? Color.DarkGreen : Color.Gray;
+                var countText = bundle.IsComplete 
+                    ? "Complete" 
+                    : $"{bundle.CompletedItems}/{bundle.TotalItems}";
+                
+                DrawText(b, $"      {bundleIcon} {bundle.BundleName}: {countText}", x, ref y, bundleColor);
+            }
+            y += 8;
+        }
+
+        y += SectionSpacing;
+
+        // Legacy: Show bundle items available today (if any)
+        if (_summary?.BundleNeededItems.Count > 0)
+        {
+            DrawSectionTitle(b, "🌟 Available Today for Bundles", x, ref y, Color.Orange);
+            y += 4;
+            
             // Group by bundle
             var byBundle = new Dictionary<string, List<CollectibleItem>>();
             foreach (var item in _summary.BundleNeededItems)
@@ -501,14 +602,39 @@ public sealed class PlannerOverlay : IClickableMenu
             foreach (var (bundleName, items) in byBundle.OrderBy(kvp => kvp.Key))
             {
                 DrawText(b, $"  {bundleName}:", x, ref y, Color.Gold);
-                foreach (var item in items)
+                foreach (var item in items.Take(3)) // Limit to 3 per bundle to save space
                 {
                     DrawCollectibleItem(b, item, x + 32, ref y, maxWidth - 32, Color.White);
                 }
-                y += 8;
+                if (items.Count > 3)
+                {
+                    DrawText(b, $"    ...and {items.Count - 3} more", x, ref y, Color.LightGray);
+                }
+                y += 4;
             }
+            y += SectionSpacing;
         }
-        y += SectionSpacing;
+    }
+
+    /// <summary>Draw a progress bar.</summary>
+    private void DrawProgressBar(SpriteBatch b, int x, int y, int width, int height, int percent, Color fillColor)
+    {
+        // Background
+        b.Draw(Game1.staminaRect, new Rectangle(x, y, width, height), Color.DarkGray);
+        
+        // Fill
+        var fillWidth = (int)(width * (percent / 100.0));
+        if (fillWidth > 0)
+        {
+            b.Draw(Game1.staminaRect, new Rectangle(x, y, fillWidth, height), fillColor);
+        }
+        
+        // Border
+        var borderColor = new Color(60, 60, 60);
+        b.Draw(Game1.staminaRect, new Rectangle(x, y, width, 1), borderColor);
+        b.Draw(Game1.staminaRect, new Rectangle(x, y + height - 1, width, 1), borderColor);
+        b.Draw(Game1.staminaRect, new Rectangle(x, y, 1, height), borderColor);
+        b.Draw(Game1.staminaRect, new Rectangle(x + width - 1, y, 1, height), borderColor);
     }
 
     private void DrawBirthdaysTab(SpriteBatch b, int x, ref int y, int maxWidth)
@@ -867,6 +993,15 @@ public sealed class PlannerOverlay : IClickableMenu
                     Game1.playSound("smallSelect");
                 return;
             }
+        }
+
+        // Check availability filter toggle (only on Bundles tab)
+        if (_activeTab == PlannerTab.Bundles && _availabilityFilterButtonBounds.Contains(x, y))
+        {
+            _showAvailableTodayOnly = !_showAvailableTodayOnly;
+            if (playSound)
+                Game1.playSound("smallSelect");
+            return;
         }
     }
 

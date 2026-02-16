@@ -17,12 +17,27 @@ public sealed class BundleInfo
     /// <summary>Item IDs that have already been contributed to this bundle.</summary>
     public IReadOnlySet<string> CompletedItemIds { get; init; } = new HashSet<string>();
 
+    /// <summary>Bundle slots with OR requirement support.</summary>
+    public IReadOnlyList<BundleSlot> Slots { get; init; } = Array.Empty<BundleSlot>();
+
+    /// <summary>Number of slots required to complete the bundle (may be less than total slots).</summary>
+    public int SlotsRequired { get; init; }
+
+    /// <summary>Number of slots that have been filled.</summary>
+    public int SlotsFilled => Slots.Count(s => s.IsFilled);
+
     /// <summary>Whether the entire bundle is complete.</summary>
-    public bool IsComplete => RequiredItems.All(r => CompletedItemIds.Contains(r.ItemId));
+    public bool IsComplete => SlotsRequired > 0 
+        ? SlotsFilled >= SlotsRequired 
+        : RequiredItems.All(r => CompletedItemIds.Contains(r.ItemId));
 
     /// <summary>Get the items still needed for this bundle.</summary>
     public IEnumerable<BundleItem> GetRemainingItems() =>
         RequiredItems.Where(r => !CompletedItemIds.Contains(r.ItemId));
+
+    /// <summary>Get the unfilled slots for this bundle.</summary>
+    public IEnumerable<BundleSlot> GetRemainingSlots() =>
+        Slots.Where(s => !s.IsFilled);
 }
 
 /// <summary>An individual item requirement within a bundle.</summary>
