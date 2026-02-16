@@ -58,20 +58,31 @@ A SMAPI mod for Stardew Valley that helps players track collectibles, upcoming e
 
 ## Configuration
 
-Edit `config.json` in the mod folder to customize:
+### In-Game Configuration (Recommended)
+Install [Generic Mod Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098) for an in-game settings menu. Access it from the title screen or in-game options.
+
+### Manual Configuration
+Edit `config.json` in the mod folder:
 
 ```json
 {
   "ToggleKey": "F7",
-  "LookaheadDays": 7
+  "BirthdayLookaheadDays": 7,
+  "SeasonAlertDays": 3
 }
 ```
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| ToggleKey | F7 | Key to open/close the planner |
+| BirthdayLookaheadDays | 7 | Days ahead to show upcoming birthdays |
+| SeasonAlertDays | 3 | Days before season end for last-chance alerts |
 
 ## Requirements
 
 - Stardew Valley 1.6+
 - SMAPI 4.0+
-- .NET 6.0 (included with SMAPI)
+- [Generic Mod Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098) (optional, for in-game settings)
 
 ## Building from Source
 

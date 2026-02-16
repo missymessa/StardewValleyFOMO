@@ -3,6 +3,7 @@ using StardewModdingAPI.Events;
 using StardewValley;
 using StardewFOMO.Core.Services;
 using StardewFOMO.Mod.Adapters;
+using StardewFOMO.Mod.Integration;
 using StardewFOMO.Mod.UI;
 
 namespace StardewFOMO.Mod;
@@ -44,6 +45,64 @@ public sealed class ModEntry : StardewModdingAPI.Mod
     private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
     {
         Monitor.Log("Game launched — planner ready.", LogLevel.Debug);
+        RegisterWithGMCM();
+    }
+
+    private void RegisterWithGMCM()
+    {
+        // Get the GMCM API (returns null if GMCM isn't installed)
+        var gmcm = Helper.ModRegistry.GetApi<IGenericModConfigMenuApi>("spacechase0.GenericModConfigMenu");
+        if (gmcm == null)
+        {
+            Monitor.Log("Generic Mod Config Menu not found — using config.json only.", LogLevel.Debug);
+            return;
+        }
+
+        // Register the mod
+        gmcm.Register(
+            mod: ModManifest,
+            reset: () => _config = new ModConfig(),
+            save: () => Helper.WriteConfig(_config)
+        );
+
+        // Add section title
+        gmcm.AddSectionTitle(
+            mod: ModManifest,
+            text: () => "Daily Planner Settings"
+        );
+
+        // Toggle key option
+        gmcm.AddKeybindList(
+            mod: ModManifest,
+            getValue: () => _config.ToggleKey,
+            setValue: value => _config.ToggleKey = value,
+            name: () => "Toggle Key",
+            tooltip: () => "The key to open/close the Daily Planner overlay. Default: F7"
+        );
+
+        // Birthday lookahead days
+        gmcm.AddNumberOption(
+            mod: ModManifest,
+            getValue: () => _config.BirthdayLookaheadDays,
+            setValue: value => _config.BirthdayLookaheadDays = value,
+            name: () => "Birthday Lookahead Days",
+            tooltip: () => "How many days ahead to show upcoming NPC birthdays.",
+            min: 1,
+            max: 28
+        );
+
+        // Season alert days
+        gmcm.AddNumberOption(
+            mod: ModManifest,
+            getValue: () => _config.SeasonAlertDays,
+            setValue: value => _config.SeasonAlertDays = value,
+            name: () => "Season Alert Days",
+            tooltip: () => "Days before season end to show last-chance item alerts.",
+            min: 1,
+            max: 14
+        );
+
+        Monitor.Log("Registered with Generic Mod Config Menu.", LogLevel.Info);
     }
 
     private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
