@@ -11,6 +11,13 @@
     <EnableModZip>true</EnableModZip>
   </PropertyGroup>
 
+  <!-- CI build configuration - skip game detection when SMAPI_MODS_PATH is not set -->
+  <PropertyGroup Condition="'$(CI)' == 'true' OR '$(GITHUB_ACTIONS)' == 'true'">
+    <EnableModDeploy>false</EnableModDeploy>
+    <EnableModZip>false</EnableModZip>
+    <GamePath>$(MSBuildProjectDirectory)/fake-game-path</GamePath>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.1.1" />
   </ItemGroup>

@@ -28,6 +28,12 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
+    - name: Create fake game path for CI build
+      run: |
+        mkdir -p src/StardewFOMO.Mod/fake-game-path/Stardew\ Valley_Data/Managed
+        touch src/StardewFOMO.Mod/fake-game-path/Stardew\ Valley.dll
+        touch src/StardewFOMO.Mod/fake-game-path/StardewModdingAPI.dll
+
     - name: Build
       run: dotnet build -c Release --no-restore
 
