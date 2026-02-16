@@ -93,12 +93,17 @@ public sealed class TomorrowPreviewService
     {
         var events = new List<string>();
 
+        // Add festival if tomorrow is a festival day
         if (_gameStateProvider.IsTomorrowFestivalDay())
         {
             var festivalName = _gameStateProvider.GetTomorrowFestivalName();
             if (festivalName != null)
-                events.Add($"Festival: {festivalName}");
+                events.Add($"🎉 Festival: {festivalName}");
         }
+
+        // Add other events from the game state provider
+        var otherEvents = _gameStateProvider.GetTomorrowEvents();
+        events.AddRange(otherEvents);
 
         return events.AsReadOnly();
     }

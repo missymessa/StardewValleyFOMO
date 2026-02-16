@@ -31,4 +31,37 @@ public interface IGameStateProvider
 
     /// <summary>Get tomorrow's festival name if applicable; null otherwise.</summary>
     string? GetTomorrowFestivalName();
+
+    /// <summary>Check if the Traveling Merchant is visiting today (Friday/Sunday).</summary>
+    bool IsTravelingMerchantDay();
+
+    /// <summary>Check if the Traveling Merchant visits tomorrow.</summary>
+    bool IsTomorrowTravelingMerchantDay();
+
+    /// <summary>Check if today is a Night Market day (Winter 15-17).</summary>
+    bool IsNightMarketDay();
+
+    /// <summary>Check if tomorrow is a Night Market day.</summary>
+    bool IsTomorrowNightMarketDay();
+
+    /// <summary>Check if Queen of Sauce airs today (Sunday).</summary>
+    bool IsQueenOfSauceDay();
+
+    /// <summary>Get the recipe being taught today on Queen of Sauce, if any.</summary>
+    string? GetQueenOfSauceRecipe();
+
+    /// <summary>Check if Queen of Sauce airs tomorrow.</summary>
+    bool IsTomorrowQueenOfSauceDay();
+
+    /// <summary>Get today's daily luck value (-1 to 1 scale).</summary>
+    double GetDailyLuck();
+
+    /// <summary>Get a friendly description of today's luck.</summary>
+    string GetLuckDescription();
+
+    /// <summary>Get all special events happening today (excluding festivals).</summary>
+    IReadOnlyList<string> GetTodayEvents();
+
+    /// <summary>Get all special events happening tomorrow (excluding festivals).</summary>
+    IReadOnlyList<string> GetTomorrowEvents();
 }

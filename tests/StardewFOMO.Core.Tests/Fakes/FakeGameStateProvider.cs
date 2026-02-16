@@ -14,6 +14,17 @@ public sealed class FakeGameStateProvider : IGameStateProvider
     public string? FestivalName_ { get; set; }
     public bool TomorrowFestivalDay { get; set; }
     public string? TomorrowFestivalName_ { get; set; }
+    public bool TravelingMerchantDay { get; set; }
+    public bool TomorrowTravelingMerchantDay { get; set; }
+    public bool NightMarketDay { get; set; }
+    public bool TomorrowNightMarketDay { get; set; }
+    public bool QueenOfSauceDay { get; set; }
+    public string? QueenOfSauceRecipe_ { get; set; }
+    public bool TomorrowQueenOfSauceDay { get; set; }
+    public double DailyLuck { get; set; } = 0;
+    public string LuckDescription_ { get; set; } = "Neutral day.";
+    public List<string> TodayEvents_ { get; set; } = new();
+    public List<string> TomorrowEvents_ { get; set; } = new();
 
     public GameDate GetCurrentDate() => CurrentDate;
     public Weather GetCurrentWeather() => CurrentWeather;
@@ -23,4 +34,15 @@ public sealed class FakeGameStateProvider : IGameStateProvider
     public string? GetFestivalName() => FestivalName_;
     public bool IsTomorrowFestivalDay() => TomorrowFestivalDay;
     public string? GetTomorrowFestivalName() => TomorrowFestivalName_;
+    public bool IsTravelingMerchantDay() => TravelingMerchantDay;
+    public bool IsTomorrowTravelingMerchantDay() => TomorrowTravelingMerchantDay;
+    public bool IsNightMarketDay() => NightMarketDay;
+    public bool IsTomorrowNightMarketDay() => TomorrowNightMarketDay;
+    public bool IsQueenOfSauceDay() => QueenOfSauceDay;
+    public string? GetQueenOfSauceRecipe() => QueenOfSauceRecipe_;
+    public bool IsTomorrowQueenOfSauceDay() => TomorrowQueenOfSauceDay;
+    public double GetDailyLuck() => DailyLuck;
+    public string GetLuckDescription() => LuckDescription_;
+    public IReadOnlyList<string> GetTodayEvents() => TodayEvents_.AsReadOnly();
+    public IReadOnlyList<string> GetTomorrowEvents() => TomorrowEvents_.AsReadOnly();
 }

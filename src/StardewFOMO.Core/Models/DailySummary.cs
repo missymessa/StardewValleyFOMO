@@ -41,4 +41,13 @@ public sealed class DailySummary
 
     /// <summary>Festival name if applicable.</summary>
     public string? FestivalName { get; init; }
+
+    /// <summary>Special events happening today (Traveling Merchant, Night Market, Queen of Sauce, etc.).</summary>
+    public IReadOnlyList<string> TodayEvents { get; init; } = Array.Empty<string>();
+
+    /// <summary>Today's daily luck value (-1 to 1 scale).</summary>
+    public double DailyLuck { get; init; }
+
+    /// <summary>Friendly description of today's luck level.</summary>
+    public string LuckDescription { get; init; } = string.Empty;
 }

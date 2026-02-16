@@ -10,6 +10,7 @@ namespace StardewFOMO.Mod.UI;
 public enum PlannerTab
 {
     Today,
+    Events,
     Bundles,
     Birthdays,
     Tomorrow,
@@ -28,12 +29,13 @@ public sealed class PlannerOverlay : IClickableMenu
     private const int LineHeight = 36;
     private const int HeaderHeight = 48;
     private const int TabBarHeight = 44;
-    private const int TabWidth = 100;
+    private const int TabWidth = 90;
     private const int ScrollStep = 40;
 
     private static readonly PlannerTab[] AllTabs = 
     {
         PlannerTab.Today,
+        PlannerTab.Events,
         PlannerTab.Bundles,
         PlannerTab.Birthdays,
         PlannerTab.Tomorrow,
@@ -47,7 +49,7 @@ public sealed class PlannerOverlay : IClickableMenu
 
     private Rectangle _panelBounds;
     private Rectangle _closeButtonBounds;
-    private readonly Rectangle[] _tabBounds = new Rectangle[5];
+    private readonly Rectangle[] _tabBounds = new Rectangle[6];
 
     // Birthday hover tracking
     private readonly List<(Rectangle Bounds, NpcBirthday Birthday)> _birthdayHitboxes = new();
@@ -196,6 +198,9 @@ public sealed class PlannerOverlay : IClickableMenu
             case PlannerTab.Today:
                 DrawTodayTab(b, x, ref y, maxWidth);
                 break;
+            case PlannerTab.Events:
+                DrawEventsTab(b, x, ref y, maxWidth);
+                break;
             case PlannerTab.Bundles:
                 DrawBundlesTab(b, x, ref y, maxWidth);
                 break;
@@ -288,6 +293,7 @@ public sealed class PlannerOverlay : IClickableMenu
     private static string GetTabLabel(PlannerTab tab) => tab switch
     {
         PlannerTab.Today => "Today",
+        PlannerTab.Events => "Events",
         PlannerTab.Bundles => "Bundles",
         PlannerTab.Birthdays => "Birthdays",
         PlannerTab.Tomorrow => "Tomorrow",
@@ -297,11 +303,38 @@ public sealed class PlannerOverlay : IClickableMenu
 
     private void DrawTodayTab(SpriteBatch b, int x, ref int y, int maxWidth)
     {
+        // Brief luck indicator
+        var luckIcon = _summary!.DailyLuck >= 0.02 ? "🍀" : _summary.DailyLuck <= -0.02 ? "💀" : "⚖";
+        var luckColor = _summary.DailyLuck switch
+        {
+            >= 0.07 => Color.Gold,
+            >= 0.02 => Color.LightGreen,
+            >= -0.02 => Color.White,
+            >= -0.07 => Color.Orange,
+            _ => Color.OrangeRed
+        };
+        DrawText(b, $"{luckIcon} {_summary.LuckDescription}", x, ref y, luckColor);
+        y += 4;
+
         // Festival notice
-        if (_summary!.IsFestivalDay && _summary.FestivalName != null)
+        if (_summary.IsFestivalDay && _summary.FestivalName != null)
         {
             DrawSectionTitle(b, $"🎉 {_summary.FestivalName}", x, ref y, Color.Gold);
             y += SectionSpacing;
+        }
+
+        // Brief events summary (if any special events today)
+        if (_summary.TodayEvents.Count > 0)
+        {
+            foreach (var evt in _summary.TodayEvents.Take(2))
+            {
+                DrawText(b, $"  {evt}", x, ref y, Color.Cyan);
+            }
+            if (_summary.TodayEvents.Count > 2)
+            {
+                DrawText(b, $"  +{_summary.TodayEvents.Count - 2} more (see Events tab)", x, ref y, Color.LightGray);
+            }
+            y += 8;
         }
 
         // Last-chance alerts (highest priority)
@@ -370,6 +403,69 @@ public sealed class PlannerOverlay : IClickableMenu
         {
             DrawText(b, $"    ... and {_summary.AvailableForageables.Count - 8} more", x, ref y, Color.LightGray);
         }
+        y += SectionSpacing;
+    }
+
+    private void DrawEventsTab(SpriteBatch b, int x, ref int y, int maxWidth)
+    {
+        // Daily Luck section
+        DrawSectionTitle(b, "🍀 Today's Fortune", x, ref y, Color.LimeGreen);
+        
+        var luckColor = _summary!.DailyLuck switch
+        {
+            >= 0.07 => Color.Gold,
+            >= 0.02 => Color.LightGreen,
+            >= -0.02 => Color.White,
+            >= -0.07 => Color.Orange,
+            _ => Color.OrangeRed
+        };
+        DrawText(b, $"  {_summary.LuckDescription}", x, ref y, luckColor);
+        
+        var luckPercent = (_summary.DailyLuck * 100).ToString("+0.0;-0.0;0");
+        DrawText(b, $"  Luck modifier: {luckPercent}%", x, ref y, Color.LightGray);
+        y += SectionSpacing;
+
+        // Festival today
+        if (_summary.IsFestivalDay && _summary.FestivalName != null)
+        {
+            DrawSectionTitle(b, "🎉 Festival Today!", x, ref y, Color.Gold);
+            DrawText(b, $"  {_summary.FestivalName}", x, ref y, Color.White);
+            DrawText(b, "  Most shops closed. Enjoy the festivities!", x, ref y, Color.Khaki);
+            y += SectionSpacing;
+        }
+
+        // Today's special events
+        DrawSectionTitle(b, "📅 Today's Events", x, ref y, Color.Cyan);
+        if (_summary.TodayEvents.Count > 0)
+        {
+            foreach (var evt in _summary.TodayEvents)
+            {
+                DrawText(b, $"  {evt}", x, ref y, Color.White);
+            }
+        }
+        else
+        {
+            DrawText(b, "  No special events today.", x, ref y, Color.LightGray);
+        }
+        y += SectionSpacing;
+
+        // Tomorrow's events preview
+        if (_summary.TomorrowPreview != null && _summary.TomorrowPreview.Events.Count > 0)
+        {
+            DrawSectionTitle(b, "📆 Coming Tomorrow", x, ref y, Color.MediumPurple);
+            foreach (var evt in _summary.TomorrowPreview.Events)
+            {
+                DrawText(b, $"  {evt}", x, ref y, Color.LightGray);
+            }
+            y += SectionSpacing;
+        }
+
+        // Weekly schedule reminder
+        DrawSectionTitle(b, "📋 Weekly Schedule", x, ref y, Color.Violet);
+        DrawText(b, "  Friday & Sunday: Traveling Merchant", x, ref y, Color.LightGray);
+        DrawText(b, "  Sunday: Queen of Sauce (new recipe)", x, ref y, Color.LightGray);
+        DrawText(b, "  Wednesday: Queen of Sauce (rerun)", x, ref y, Color.LightGray);
+        DrawText(b, "  Winter 15-17: Night Market", x, ref y, Color.LightGray);
         y += SectionSpacing;
     }
 

@@ -84,16 +84,22 @@ public sealed class DailySummaryService
         var isFestival = _gameState.IsFestivalDay();
         var festivalName = _gameState.GetFestivalName();
 
+        // Today's events and luck
+        var todayEvents = _gameState.GetTodayEvents();
+        var dailyLuck = _gameState.GetDailyLuck();
+        var luckDescription = _gameState.GetLuckDescription();
+
         _logger.Log(LogLevel.Info,
             $"Daily summary complete: {annotatedFish.Count} fish, {annotatedForage.Count} forageables, " +
-            $"{bundleNeeded.Count} bundle-needed, {todayBirthdays.Count} birthdays today, {alerts.Count} alerts",
+            $"{bundleNeeded.Count} bundle-needed, {todayBirthdays.Count} birthdays today, {alerts.Count} alerts, {todayEvents.Count} events",
             new
             {
                 FishCount = annotatedFish.Count,
                 ForageCount = annotatedForage.Count,
                 BundleNeededCount = bundleNeeded.Count,
                 TodayBirthdayCount = todayBirthdays.Count,
-                AlertCount = alerts.Count
+                AlertCount = alerts.Count,
+                EventCount = todayEvents.Count
             });
 
         return new DailySummary
@@ -108,7 +114,10 @@ public sealed class DailySummaryService
             TomorrowPreview = tomorrow,
             LastChanceAlerts = alerts,
             IsFestivalDay = isFestival,
-            FestivalName = festivalName
+            FestivalName = festivalName,
+            TodayEvents = todayEvents,
+            DailyLuck = dailyLuck,
+            LuckDescription = luckDescription
         };
     }
 
@@ -173,7 +182,10 @@ public sealed class DailySummaryService
             LastChanceAlerts = baseSummary.LastChanceAlerts,
             AllCollectionItems = allItems.AsReadOnly(),
             IsFestivalDay = baseSummary.IsFestivalDay,
-            FestivalName = baseSummary.FestivalName
+            FestivalName = baseSummary.FestivalName,
+            TodayEvents = baseSummary.TodayEvents,
+            DailyLuck = baseSummary.DailyLuck,
+            LuckDescription = baseSummary.LuckDescription
         };
     }
 }
