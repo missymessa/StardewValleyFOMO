@@ -26,17 +26,38 @@ public sealed class BundleAdapter : IBundleRepository
             var keyParts = kvp.Key.Split('/');
             var roomName = keyParts.Length > 0 ? keyParts[0] : "Unknown";
 
-            // Value format: "BundleName//Item1 Qty1 Quality1/Item2 Qty2 Quality2/..."
+            // Value format: "BundleName//Item1 Qty1 Quality1/Item2 Qty2 Quality2/.../Color:SlotsRequired"
             var valueParts = kvp.Value.Split('/');
             var bundleName = valueParts.Length > 0 ? valueParts[0] : "Unknown Bundle";
 
             var requiredItems = new List<BundleItem>();
             var completedItemIds = new HashSet<string>();
+            var slots = new List<BundleSlot>();
+            int slotsRequired = 0;
 
             // Parse required items (starting from index 2, each group of 3: itemId qty quality)
+            int slotIndex = 0;
             for (int i = 2; i < valueParts.Length; i++)
             {
-                var itemParts = valueParts[i].Trim().Split(' ');
+                var itemData = valueParts[i].Trim();
+                
+                // Skip empty parts
+                if (string.IsNullOrWhiteSpace(itemData))
+                    continue;
+                
+                // Check if this is the color/slots required field (e.g., "4:6" means color 4, 6 slots required)
+                if (itemData.Contains(':') || (itemData.Length <= 3 && int.TryParse(itemData, out _) && i == valueParts.Length - 1))
+                {
+                    // Parse slots required from color field "ColorIndex:SlotsRequired"
+                    var colorParts = itemData.Split(':');
+                    if (colorParts.Length >= 2 && int.TryParse(colorParts[1], out var reqSlots))
+                    {
+                        slotsRequired = reqSlots;
+                    }
+                    continue;
+                }
+
+                var itemParts = itemData.Split(' ');
                 if (itemParts.Length >= 3 && int.TryParse(itemParts[0], out var itemId) && itemId > 0)
                 {
                     var quantity = int.TryParse(itemParts[1], out var q) ? q : 1;
@@ -46,15 +67,32 @@ public sealed class BundleAdapter : IBundleRepository
                         ? info.DisplayName
                         : $"Item {itemId}";
 
-                    requiredItems.Add(new BundleItem
+                    var bundleItem = new BundleItem
                     {
                         ItemId = itemId.ToString(),
                         ItemName = itemName,
                         Quantity = quantity,
                         MinimumQuality = quality
+                    };
+                    
+                    requiredItems.Add(bundleItem);
+                    
+                    // Create a slot for this item
+                    slots.Add(new BundleSlot
+                    {
+                        SlotIndex = slotIndex,
+                        ValidItems = new List<BundleItem> { bundleItem }.AsReadOnly(),
+                        IsFilled = false, // Will be set below
+                        FilledWithItemId = null
                     });
+                    
+                    slotIndex++;
                 }
             }
+
+            // If no slotsRequired was specified, default to all items required
+            if (slotsRequired == 0)
+                slotsRequired = requiredItems.Count;
 
             // Check completion state from the bundle rewards dictionary
             if (int.TryParse(keyParts.Length > 1 ? keyParts[1] : "", out var bundleIndex))
@@ -64,7 +102,21 @@ public sealed class BundleAdapter : IBundleRepository
                     for (int i = 0; i < completed.Length && i < requiredItems.Count; i++)
                     {
                         if (completed[i])
+                        {
                             completedItemIds.Add(requiredItems[i].ItemId);
+                            
+                            // Mark the slot as filled
+                            if (i < slots.Count)
+                            {
+                                slots[i] = new BundleSlot
+                                {
+                                    SlotIndex = slots[i].SlotIndex,
+                                    ValidItems = slots[i].ValidItems,
+                                    IsFilled = true,
+                                    FilledWithItemId = requiredItems[i].ItemId
+                                };
+                            }
+                        }
                     }
                 }
             }
@@ -74,7 +126,9 @@ public sealed class BundleAdapter : IBundleRepository
                 BundleName = bundleName,
                 RoomName = roomName,
                 RequiredItems = requiredItems.AsReadOnly(),
-                CompletedItemIds = completedItemIds
+                CompletedItemIds = completedItemIds,
+                Slots = slots.AsReadOnly(),
+                SlotsRequired = slotsRequired
             });
         }
 
