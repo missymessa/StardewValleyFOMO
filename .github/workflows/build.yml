@@ -1,9 +1,8 @@
-name: Build and Release
+name: Build and Test
 
 on:
   push:
     branches: [ main ]
-    tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -28,53 +27,14 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
-    - name: Create fake game path for CI build
-      run: |
-        mkdir -p src/StardewFOMO.Mod/fake-game-path/Stardew\ Valley_Data/Managed
-        touch src/StardewFOMO.Mod/fake-game-path/Stardew\ Valley.dll
-        touch src/StardewFOMO.Mod/fake-game-path/StardewModdingAPI.dll
+    - name: Build Core library
+      run: dotnet build src/StardewFOMO.Core/StardewFOMO.Core.csproj -c Release --no-restore
 
-    - name: Build
-      run: dotnet build -c Release --no-restore
+    - name: Build and run tests
+      run: dotnet test tests/StardewFOMO.Core.Tests/StardewFOMO.Core.Tests.csproj -c Release --no-restore --verbosity normal
 
-    - name: Run tests
-      run: dotnet test -c Release --no-build --verbosity normal
-
-    - name: Package mod
-      run: |
-        mkdir -p artifacts/${{ env.MOD_NAME }}
-        cp src/${{ env.MOD_NAME }}/bin/Release/net6.0/${{ env.MOD_NAME }}.dll artifacts/${{ env.MOD_NAME }}/
-        cp src/${{ env.MOD_NAME }}/bin/Release/net6.0/StardewFOMO.Core.dll artifacts/${{ env.MOD_NAME }}/
-        cp src/${{ env.MOD_NAME }}/manifest.json artifacts/${{ env.MOD_NAME }}/
-
-    - name: Upload mod artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.MOD_NAME }}
-        path: artifacts/${{ env.MOD_NAME }}
-        retention-days: 30
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: ${{ env.MOD_NAME }}
-        path: ${{ env.MOD_NAME }}
-
-    - name: Create release zip
-      run: |
-        cd ${{ env.MOD_NAME }}
-        zip -r ../${{ env.MOD_NAME }}.zip .
-
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: ${{ env.MOD_NAME }}.zip
-        generate_release_notes: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # Note: The mod build requires Stardew Valley game files which cannot be distributed.
+  # To create a release:
+  # 1. Build locally with the game installed: dotnet build -c Release
+  # 2. Create a GitHub Release and upload the zip from: 
+  #    src/StardewFOMO.Mod/bin/Release/net6.0/StardewFOMO.Mod 1.0.0.zip
