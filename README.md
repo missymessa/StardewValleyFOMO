@@ -14,9 +14,14 @@ A SMAPI mod for Stardew Valley that helps players track collectibles, upcoming e
 - Visual indicators show what you've already collected vs. what's still needed
 
 ### 🎁 Community Center Bundle Tracker
-- Highlights items needed for incomplete bundles
-- Shows which bundles need each collectible
-- Helps prioritize high-value items
+- **Room Progress Overview**: View all 6 Community Center rooms with progress bars showing completion percentage
+- **Bundle Details**: Each bundle shows X/Y item counts with visual completion indicators
+- **Item Requirements**: Expand bundles to see exactly which items are still needed, including quality requirements (Silver ☆, Gold ★, Iridium ◆)
+- **OR Requirements**: Remixed bundles display alternative item options ("Item A or Item B")
+- **Owned Item Highlighting**: Items you have in inventory or storage show "★ [HAVE]" indicator
+- **"Available Today" Filter**: Toggle to show only bundles with items obtainable based on current season, weather, and time
+- **Bundle Pickup Notifications**: Get a HUD message when you pick up an item needed for a bundle
+- **Joja Route Handling**: Gracefully displays a message if you chose the Joja Mart path
 
 ### 🎂 NPC Birthday Reminders
 - Shows today's birthdays with gift suggestions
@@ -68,7 +73,9 @@ Edit `config.json` in the mod folder:
 {
   "ToggleKey": "F7",
   "BirthdayLookaheadDays": 7,
-  "SeasonAlertDays": 3
+  "SeasonAlertDays": 3,
+  "AvailabilityFilterDefault": false,
+  "EnableBundleNotifications": true
 }
 ```
 
@@ -77,6 +84,8 @@ Edit `config.json` in the mod folder:
 | ToggleKey | F7 | Key to open/close the planner |
 | BirthdayLookaheadDays | 7 | Days ahead to show upcoming birthdays |
 | SeasonAlertDays | 3 | Days before season end for last-chance alerts |
+| AvailabilityFilterDefault | false | Start with "Available Today" filter enabled in Bundles tab |
+| EnableBundleNotifications | true | Show HUD notification when picking up bundle items |
 
 ## Requirements
 
@@ -118,9 +127,10 @@ StardewValleyFOMO/
 │   ├── StardewFOMO.Core/       # Core domain models and abstractions
 │   └── StardewFOMO.Mod/        # SMAPI mod implementation
 ├── tests/
-│   └── StardewFOMO.Tests/      # Unit tests (60+ tests)
+│   └── StardewFOMO.Core.Tests/ # Unit tests (95+ tests)
 └── specs/
-    └── 001-daily-planner/      # Feature specifications
+    ├── 001-daily-planner/      # Daily planner feature specifications
+    └── 002-bundle-tracker/     # Bundle tracker feature specifications
 ```
 
 ## Contributing

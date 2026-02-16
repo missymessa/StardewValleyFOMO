@@ -17,4 +17,10 @@ public sealed class ModConfig
 
     /// <summary>Number of days before season end to trigger last-chance alerts. Default: 3.</summary>
     public int SeasonAlertDays { get; set; } = 3;
+
+    /// <summary>Whether to start with the "Available Today" bundle filter enabled. Default: false.</summary>
+    public bool AvailabilityFilterDefault { get; set; } = false;
+
+    /// <summary>Whether to show HUD notifications when picking up bundle items. Default: true.</summary>
+    public bool EnableBundleNotifications { get; set; } = true;
 }

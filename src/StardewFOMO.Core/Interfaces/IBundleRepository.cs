@@ -21,4 +21,18 @@ public interface IBundleRepository
 
     /// <summary>Check whether the Community Center route is active (vs. Joja).</summary>
     bool IsCommunityCenterActive();
+
+    /// <summary>Get all Community Center room names.</summary>
+    IReadOnlyList<string> GetAllRooms();
+
+    /// <summary>Get progress for a specific room.</summary>
+    /// <param name="roomName">The room name to get progress for.</param>
+    RoomProgress GetRoomProgress(string roomName);
+
+    /// <summary>Get all bundles belonging to a specific room.</summary>
+    /// <param name="roomName">The room name to get bundles for.</param>
+    IReadOnlyList<BundleInfo> GetBundlesByRoom(string roomName);
+
+    /// <summary>Check whether the entire Community Center has been restored.</summary>
+    bool IsCommunityComplete();
 }
