@@ -100,13 +100,34 @@ Edit `config.json` in the mod folder:
 git clone https://github.com/missymessa/StardewValleyFOMO.git
 cd StardewValleyFOMO
 
-# Build the solution
+# Build and install to game (requires Stardew Valley + SMAPI installed)
 dotnet build -c Release
 ```
 
 The mod will be automatically copied to your game's Mods folder if the path is configured correctly.
 
-The release zip is generated at `src/StardewFOMO.Mod/bin/Release/net6.0/StardewFOMO.Mod 1.0.0.zip`
+The release zip is generated at `src/StardewFOMO.Mod/bin/Release/net6.0/StardewFOMO.Mod X.Y.Z.zip`
+
+### Development Workflow
+
+```bash
+# Quick build and install (Debug mode)
+dotnet build src/StardewFOMO.Mod/StardewFOMO.Mod.csproj
+
+# Run tests
+dotnet test
+
+# Watch mode - auto-rebuild on file changes
+dotnet watch build --project src/StardewFOMO.Mod/StardewFOMO.Mod.csproj
+
+# Or use the PowerShell script
+./scripts/dev-build.ps1           # Debug build
+./scripts/dev-build.ps1 -Release  # Release build
+./scripts/dev-build.ps1 -Test     # Run tests first
+./scripts/dev-build.ps1 -Watch    # Watch mode
+```
+
+**VS Code**: Press `Ctrl+Shift+B` to build and install, or use the Command Palette → "Tasks: Run Task".
 
 ### Creating a Release
 
