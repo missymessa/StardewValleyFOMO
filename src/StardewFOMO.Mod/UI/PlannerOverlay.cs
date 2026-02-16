@@ -16,7 +16,6 @@ public enum PlannerTab
     Bundles,
     Birthdays,
     Tomorrow,
-    Collections,
     Perfection
 }
 
@@ -43,7 +42,6 @@ public sealed class PlannerOverlay : IClickableMenu
         PlannerTab.Bundles,
         PlannerTab.Birthdays,
         PlannerTab.Tomorrow,
-        PlannerTab.Collections,
         PlannerTab.Perfection
     };
 
@@ -60,7 +58,7 @@ public sealed class PlannerOverlay : IClickableMenu
 
     private Rectangle _panelBounds;
     private Rectangle _closeButtonBounds;
-    private readonly Rectangle[] _tabBounds = new Rectangle[7];
+    private readonly Rectangle[] _tabBounds = new Rectangle[6];
 
     // Birthday hover tracking
     private readonly List<(Rectangle Bounds, NpcBirthday Birthday)> _birthdayHitboxes = new();
@@ -248,9 +246,6 @@ public sealed class PlannerOverlay : IClickableMenu
             case PlannerTab.Tomorrow:
                 DrawTomorrowTab(b, x, ref y, maxWidth);
                 break;
-            case PlannerTab.Collections:
-                DrawCollectionsTab(b, x, ref y, maxWidth);
-                break;
             case PlannerTab.Perfection:
                 DrawPerfectionTab(b, x, ref y, maxWidth);
                 break;
@@ -338,7 +333,7 @@ public sealed class PlannerOverlay : IClickableMenu
         PlannerTab.Bundles => "Bundles",
         PlannerTab.Birthdays => "Bdays",
         PlannerTab.Tomorrow => "Next",
-        PlannerTab.Collections => "All",
+        PlannerTab.Perfection => "100%",
         _ => "?"
     };
 
@@ -768,65 +763,6 @@ public sealed class PlannerOverlay : IClickableMenu
             }
             y += SectionSpacing;
         }
-    }
-
-    private void DrawCollectionsTab(SpriteBatch b, int x, ref int y, int maxWidth)
-    {
-        DrawSectionTitle(b, "📋 All Collection Items", x, ref y, Color.Yellow);
-        y += 8;
-
-        if (_summary!.AllCollectionItems.Count == 0)
-        {
-            DrawText(b, "  No collection data available.", x, ref y, Color.LightGray);
-        }
-        else
-        {
-            // Group by collection status
-            var collected = _summary.AllCollectionItems.Where(i => i.CollectionStatus == CollectionStatus.EverCollected).ToList();
-            var inInventory = _summary.AllCollectionItems.Where(i => i.CollectionStatus == CollectionStatus.InInventory).ToList();
-            var notCollected = _summary.AllCollectionItems.Where(i => i.CollectionStatus == CollectionStatus.NotCollected).ToList();
-
-            // Summary
-            DrawText(b, $"  Total: {_summary.AllCollectionItems.Count} | Collected: {collected.Count} | Remaining: {notCollected.Count}", x, ref y, Color.White);
-            y += SectionSpacing;
-
-            // Not collected (priority)
-            if (notCollected.Count > 0)
-            {
-                DrawText(b, $"  ○ Not Yet Collected ({notCollected.Count}):", x, ref y, Color.LightCoral);
-                foreach (var item in notCollected)
-                {
-                    DrawCollectibleItem(b, item, x + 32, ref y, maxWidth - 32, Color.White);
-                }
-                y += SectionSpacing;
-            }
-
-            // In inventory
-            if (inInventory.Count > 0)
-            {
-                DrawText(b, $"  ★ In Inventory ({inInventory.Count}):", x, ref y, Color.LightGreen);
-                foreach (var item in inInventory)
-                {
-                    DrawCollectibleItem(b, item, x + 32, ref y, maxWidth - 32, Color.White);
-                }
-                y += SectionSpacing;
-            }
-
-            // Already collected
-            if (collected.Count > 0)
-            {
-                DrawText(b, $"  ✓ Already Collected ({collected.Count}):", x, ref y, Color.Gray);
-                foreach (var item in collected.Take(20))
-                {
-                    DrawCollectibleItem(b, item, x + 32, ref y, maxWidth - 32, Color.DarkGray);
-                }
-                if (collected.Count > 20)
-                {
-                    DrawText(b, $"    ... and {collected.Count - 20} more", x, ref y, Color.DarkGray);
-                }
-            }
-        }
-        y += SectionSpacing;
     }
 
     private void DrawPerfectionTab(SpriteBatch b, int x, ref int y, int maxWidth)
