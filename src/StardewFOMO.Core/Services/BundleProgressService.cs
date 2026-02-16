@@ -24,8 +24,6 @@ public sealed class BundleProgressService
         var bundles = _bundleRepo.GetAllBundles();
         var completed = bundles.Count(b => b.IsComplete);
 
-        _logger.Log(LogLevel.Debug, $"Overall CC progress: {completed}/{bundles.Count} bundles complete");
-
         return new RoomProgress
         {
             RoomName = "Community Center",

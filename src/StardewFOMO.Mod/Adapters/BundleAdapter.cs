@@ -10,6 +10,7 @@ namespace StardewFOMO.Mod.Adapters;
 /// </summary>
 public sealed class BundleAdapter : IBundleRepository
 {
+
     /// <inheritdoc/>
     public IReadOnlyList<BundleInfo> GetAllBundles()
     {
@@ -26,7 +27,8 @@ public sealed class BundleAdapter : IBundleRepository
             var keyParts = kvp.Key.Split('/');
             var roomName = keyParts.Length > 0 ? keyParts[0] : "Unknown";
 
-            // Value format: "BundleName//Item1 Qty1 Quality1/Item2 Qty2 Quality2/.../Color:SlotsRequired"
+            // Value format: "BundleName/Reward/AllItemsInOneString/Color///DisplayName"
+            // Where AllItemsInOneString is like "724 1 0 259 1 0 430 1 0" (triplets: itemId qty quality)
             var valueParts = kvp.Value.Split('/');
             var bundleName = valueParts.Length > 0 ? valueParts[0] : "Unknown Bundle";
 
@@ -35,64 +37,51 @@ public sealed class BundleAdapter : IBundleRepository
             var slots = new List<BundleSlot>();
             int slotsRequired = 0;
 
-            // Parse required items (starting from index 2, each group of 3: itemId qty quality)
-            int slotIndex = 0;
-            for (int i = 2; i < valueParts.Length; i++)
+            // Parse items from index 2 - ALL items are in this single field separated by spaces
+            // Format: "itemId1 qty1 quality1 itemId2 qty2 quality2 ..."
+            if (valueParts.Length > 2)
             {
-                var itemData = valueParts[i].Trim();
+                var itemsString = valueParts[2].Trim();
+                var itemTokens = itemsString.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 
-                // Skip empty parts
-                if (string.IsNullOrWhiteSpace(itemData))
-                    continue;
-                
-                // Check if this is the color/slots required field (e.g., "4:6" means color 4, 6 slots required)
-                if (itemData.Contains(':') || (itemData.Length <= 3 && int.TryParse(itemData, out _) && i == valueParts.Length - 1))
+                int slotIndex = 0;
+                // Parse in groups of 3 (itemId, qty, quality)
+                for (int i = 0; i + 2 < itemTokens.Length; i += 3)
                 {
-                    // Parse slots required from color field "ColorIndex:SlotsRequired"
-                    var colorParts = itemData.Split(':');
-                    if (colorParts.Length >= 2 && int.TryParse(colorParts[1], out var reqSlots))
+                    if (int.TryParse(itemTokens[i], out var itemId) && itemId > 0)
                     {
-                        slotsRequired = reqSlots;
+                        var quantity = int.TryParse(itemTokens[i + 1], out var q) ? q : 1;
+                        var quality = int.TryParse(itemTokens[i + 2], out var qual) ? qual : 0;
+                        var itemName = Game1.objectData != null &&
+                                       Game1.objectData.TryGetValue(itemId.ToString(), out var info)
+                            ? info.DisplayName
+                            : $"Item {itemId}";
+
+                        var bundleItem = new BundleItem
+                        {
+                            ItemId = itemId.ToString(),
+                            ItemName = itemName,
+                            Quantity = quantity,
+                            MinimumQuality = quality
+                        };
+                        
+                        requiredItems.Add(bundleItem);
+                        
+                        slots.Add(new BundleSlot
+                        {
+                            SlotIndex = slotIndex,
+                            ValidItems = new List<BundleItem> { bundleItem }.AsReadOnly(),
+                            IsFilled = false,
+                            FilledWithItemId = null
+                        });
+                        
+                        slotIndex++;
                     }
-                    continue;
-                }
-
-                var itemParts = itemData.Split(' ');
-                if (itemParts.Length >= 3 && int.TryParse(itemParts[0], out var itemId) && itemId > 0)
-                {
-                    var quantity = int.TryParse(itemParts[1], out var q) ? q : 1;
-                    var quality = int.TryParse(itemParts[2], out var qual) ? qual : 0;
-                    var itemName = Game1.objectData != null &&
-                                   Game1.objectData.TryGetValue(itemId.ToString(), out var info)
-                        ? info.DisplayName
-                        : $"Item {itemId}";
-
-                    var bundleItem = new BundleItem
-                    {
-                        ItemId = itemId.ToString(),
-                        ItemName = itemName,
-                        Quantity = quantity,
-                        MinimumQuality = quality
-                    };
-                    
-                    requiredItems.Add(bundleItem);
-                    
-                    // Create a slot for this item
-                    slots.Add(new BundleSlot
-                    {
-                        SlotIndex = slotIndex,
-                        ValidItems = new List<BundleItem> { bundleItem }.AsReadOnly(),
-                        IsFilled = false, // Will be set below
-                        FilledWithItemId = null
-                    });
-                    
-                    slotIndex++;
                 }
             }
 
-            // If no slotsRequired was specified, default to all items required
-            if (slotsRequired == 0)
-                slotsRequired = requiredItems.Count;
+            // Default slotsRequired to all items (standard bundles require all items)
+            slotsRequired = requiredItems.Count;
 
             // Check completion state from the bundle rewards dictionary
             if (int.TryParse(keyParts.Length > 1 ? keyParts[1] : "", out var bundleIndex))

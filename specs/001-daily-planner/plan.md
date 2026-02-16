@@ -53,7 +53,7 @@ src/
 ├── StardewFOMO.Core/                    # Game-decoupled core library
 │   ├── StardewFOMO.Core.csproj
 │   ├── Interfaces/
-│   │   ├── IGameStateProvider.cs        # Abstracts game date, weather, time
+│   │   ├── IGameStateProvider.cs        # Abstracts game date, season, weather, time
 │   │   ├── IBundleRepository.cs         # Abstracts Community Center bundle state
 │   │   ├── ICollectionRepository.cs     # Abstracts fish/forage/ship/museum/cook/craft collections
 │   │   ├── IInventoryProvider.cs        # Abstracts player inventory and storage
@@ -63,7 +63,7 @@ src/
 │   │   ├── IRecipeRepository.cs         # Abstracts cooking/crafting recipe data
 │   │   └── ILogger.cs                   # Logging abstraction
 │   ├── Models/
-│   │   ├── GameDate.cs                  # Season, day, year
+│   │   ├── GameDate.cs                  # Season, day, year, weather
 │   │   ├── CollectibleItem.cs           # Fish/forage/artifact/mineral/recipe with availability
 │   │   ├── BundleInfo.cs                # Bundle name, required items, completion state
 │   │   ├── NpcBirthday.cs              # NPC name, date, loved/liked gifts
