@@ -29,7 +29,8 @@ public sealed class PlannerOverlay : IClickableMenu
     private const int LineHeight = 36;
     private const int HeaderHeight = 48;
     private const int TabBarHeight = 44;
-    private const int TabWidth = 90;
+    private const int TabWidth = 80;
+    private const int TabSpacing = 2;
     private const int ScrollStep = 40;
 
     private static readonly PlannerTab[] AllTabs = 
@@ -101,22 +102,25 @@ public sealed class PlannerOverlay : IClickableMenu
     private void RecalculateBounds()
     {
         var viewport = Game1.graphics.GraphicsDevice.Viewport;
-        int panelWidth = Math.Min(650, viewport.Width - PanelMargin * 2);
+        int panelWidth = Math.Min(560, viewport.Width - PanelMargin * 2);
         int panelHeight = Math.Min(viewport.Height - PanelMargin * 2, 800);
         int panelX = viewport.Width - panelWidth - PanelMargin;
         int panelY = PanelMargin;
 
         _panelBounds = new Rectangle(panelX, panelY, panelWidth, panelHeight);
 
-        // Calculate tab bounds
+        // Calculate tab bounds - evenly distribute across panel width
+        int tabAreaWidth = panelWidth - 32; // 16px padding on each side
+        int actualTabWidth = (tabAreaWidth - (AllTabs.Length - 1) * TabSpacing) / AllTabs.Length;
         int tabStartX = panelX + 16;
         int tabY = panelY + HeaderHeight;
+        
         for (int i = 0; i < AllTabs.Length; i++)
         {
             _tabBounds[i] = new Rectangle(
-                tabStartX + i * (TabWidth + 4),
+                tabStartX + i * (actualTabWidth + TabSpacing),
                 tabY,
-                TabWidth,
+                actualTabWidth,
                 TabBarHeight - 8);
         }
 
@@ -155,19 +159,19 @@ public sealed class PlannerOverlay : IClickableMenu
         // Clear hitboxes to rebuild during this frame
         _birthdayHitboxes.Clear();
 
-        // Draw panel background with darker tint for readability
+        // Draw panel background - dark charcoal for maximum readability
         IClickableMenu.drawTextureBox(b,
             Game1.menuTexture,
             new Rectangle(0, 256, 60, 60),
             _panelBounds.X, _panelBounds.Y,
             _panelBounds.Width, _panelBounds.Height,
-            new Color(60, 40, 30), 1f, false);
+            new Color(30, 30, 35), 1f, false);
 
         // Draw slightly lighter inner panel for content area
         b.Draw(Game1.staminaRect, 
             new Rectangle(_panelBounds.X + 12, _panelBounds.Y + 12, 
                 _panelBounds.Width - 24, _panelBounds.Height - 24),
-            new Color(80, 60, 40, 230));
+            new Color(20, 22, 28, 245));
 
         // Draw header
         DrawHeader(b);
@@ -256,9 +260,9 @@ public sealed class PlannerOverlay : IClickableMenu
             var bounds = _tabBounds[i];
             var isActive = tab == _activeTab;
 
-            // Tab background
-            var bgColor = isActive ? new Color(120, 90, 60) : new Color(80, 60, 40);
-            var borderColor = isActive ? Color.Gold : Color.SaddleBrown;
+            // Tab background - darker colors for better contrast
+            var bgColor = isActive ? new Color(60, 70, 90) : new Color(35, 40, 50);
+            var borderColor = isActive ? Color.Gold : new Color(60, 65, 75);
 
             IClickableMenu.drawTextureBox(b,
                 Game1.mouseCursors,
@@ -295,9 +299,9 @@ public sealed class PlannerOverlay : IClickableMenu
         PlannerTab.Today => "Today",
         PlannerTab.Events => "Events",
         PlannerTab.Bundles => "Bundles",
-        PlannerTab.Birthdays => "Birthdays",
-        PlannerTab.Tomorrow => "Tomorrow",
-        PlannerTab.Collections => "All Items",
+        PlannerTab.Birthdays => "Bdays",
+        PlannerTab.Tomorrow => "Next",
+        PlannerTab.Collections => "All",
         _ => "?"
     };
 
