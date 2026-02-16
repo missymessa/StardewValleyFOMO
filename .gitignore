@@ -1,0 +1,59 @@
+# .NET / C#
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+packages/
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+
+# Build outputs
+dist/
+build/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.csproj.user
+
+# Rider
+*.sln.iml
+
+# Logs & temp
+*.log
+*.tmp
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+
+# SMAPI mod output
+**/bin/Debug/net6.0/
+**/bin/Release/net6.0/
+
+# Test results
+TestResults/
+coverage/
+*.trx
+
+# NuGet
+**/packages/*
+!**/packages/build/
+
+# Secrets
+*.pfx
+*.key
