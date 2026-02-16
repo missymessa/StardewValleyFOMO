@@ -1,0 +1,55 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download mod from latest artifact (if available)
+      uses: dawidd6/action-download-artifact@v3
+      continue-on-error: true
+      with:
+        workflow: build.yml
+        name: uploaded-mod
+        path: mod-files
+
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.event.inputs.version }}
+        name: Stardew Valley FOMO v${{ github.event.inputs.version }}
+        body: |
+          ## Stardew Valley FOMO - Daily Planner v${{ github.event.inputs.version }}
+          
+          ### Installation
+          1. Install [SMAPI](https://smapi.io/) 4.0 or later
+          2. Download `StardewFOMO.Mod.zip` below
+          3. Extract to your `Stardew Valley/Mods` folder
+          4. Launch the game through SMAPI
+          
+          ### Usage
+          Press **F7** during gameplay to open the Daily Planner.
+          
+          ---
+          
+          **Note:** If no zip file is attached, please download the latest build from the [Actions](../../actions) tab.
+        prerelease: ${{ github.event.inputs.prerelease }}
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

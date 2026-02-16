@@ -86,6 +86,16 @@ dotnet build -c Release
 
 The mod will be automatically copied to your game's Mods folder if the path is configured correctly.
 
+The release zip is generated at `src/StardewFOMO.Mod/bin/Release/net6.0/StardewFOMO.Mod 1.0.0.zip`
+
+### Creating a Release
+
+1. Build the mod locally: `dotnet build -c Release`
+2. Go to GitHub → Actions → "Create Release"
+3. Enter the version number (e.g., `1.0.1`)
+4. Run the workflow
+5. Edit the created release and upload the zip from your local build
+
 ## Project Structure
 
 ```
