@@ -95,43 +95,11 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
-    - name: Build mod (release zip)
-      run: |
-        # Build with EnableModDeploy=false to skip game folder deployment (no game files in CI)
-        # EnableModZip=true generates the distributable zip
-        dotnet build src/StardewFOMO.Mod/StardewFOMO.Mod.csproj -c Release \
-          -p:EnableModDeploy=false \
-          -p:EnableModZip=true \
-          --no-restore
-        
-        # List generated files
-        echo "Generated files:"
-        ls -la "src/StardewFOMO.Mod/bin/Release/net6.0/"
+    - name: Build Core library (validates code compiles)
+      run: dotnet build src/StardewFOMO.Core/StardewFOMO.Core.csproj -c Release --no-restore
 
-    - name: Prepare release artifact
-      id: artifact
-      run: |
-        NEW_VERSION="${{ steps.calc_version.outputs.new_version }}"
-        ZIP_PATH="src/StardewFOMO.Mod/bin/Release/net6.0/StardewFOMO.Mod ${NEW_VERSION}.zip"
-        
-        # Check if zip was generated
-        if [ -f "$ZIP_PATH" ]; then
-          echo "Found release zip: $ZIP_PATH"
-          echo "zip_path=$ZIP_PATH" >> $GITHUB_OUTPUT
-          echo "zip_name=StardewFOMO.Mod-${NEW_VERSION}.zip" >> $GITHUB_OUTPUT
-        else
-          echo "Warning: Expected zip not found at $ZIP_PATH"
-          # Fall back to any zip file
-          FOUND_ZIP=$(find src/StardewFOMO.Mod/bin/Release/net6.0/ -name "*.zip" | head -1)
-          if [ -n "$FOUND_ZIP" ]; then
-            echo "Found fallback zip: $FOUND_ZIP"
-            echo "zip_path=$FOUND_ZIP" >> $GITHUB_OUTPUT
-            echo "zip_name=StardewFOMO.Mod-${NEW_VERSION}.zip" >> $GITHUB_OUTPUT
-          else
-            echo "No zip file found!"
-            exit 1
-          fi
-        fi
+    - name: Run tests
+      run: dotnet test tests/StardewFOMO.Core.Tests/StardewFOMO.Core.Tests.csproj -c Release --no-restore --verbosity normal
 
     - name: Commit version bump
       run: |
@@ -151,15 +119,20 @@ jobs:
       with:
         tag_name: v${{ steps.calc_version.outputs.new_version }}
         name: Stardew Valley FOMO v${{ steps.calc_version.outputs.new_version }}
-        files: ${{ steps.artifact.outputs.zip_path }}
         body: |
           ## Stardew Valley FOMO - Daily Planner v${{ steps.calc_version.outputs.new_version }}
           
-          ### Installation
+          ### Installation (Build from Source)
+          
+          The mod requires Stardew Valley game files to compile. To install:
+          
           1. Install [SMAPI](https://smapi.io/) 4.0 or later
-          2. Download `StardewFOMO.Mod-${{ steps.calc_version.outputs.new_version }}.zip` below
-          3. Extract to your `Stardew Valley/Mods` folder
-          4. Launch the game through SMAPI
+          2. Clone this repository or download the Source code zip below
+          3. Open a terminal in the repository folder
+          4. Run: `dotnet build -c Release`
+          5. The mod will be automatically installed to your Mods folder
+          
+          Alternatively, copy the contents of `src/StardewFOMO.Mod/bin/Release/net6.0/StardewFOMO.Mod/` to your `Stardew Valley/Mods/` folder.
           
           ### Usage
           Press **F7** during gameplay to open the Daily Planner.
