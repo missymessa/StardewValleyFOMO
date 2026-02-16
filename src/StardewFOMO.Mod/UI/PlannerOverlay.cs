@@ -6,9 +6,19 @@ using StardewFOMO.Core.Models;
 
 namespace StardewFOMO.Mod.UI;
 
+/// <summary>Available tabs in the planner overlay.</summary>
+public enum PlannerTab
+{
+    Today,
+    Bundles,
+    Birthdays,
+    Tomorrow,
+    Collections
+}
+
 /// <summary>
 /// In-game overlay panel that renders the daily planner using MonoGame/SpriteBatch.
-/// Supports priority view (default) and "Show All" toggle.
+/// Features a tabbed interface for different views.
 /// Session-scoped view state that resets on game restart.
 /// </summary>
 public sealed class PlannerOverlay : IClickableMenu
@@ -17,18 +27,27 @@ public sealed class PlannerOverlay : IClickableMenu
     private const int SectionSpacing = 16;
     private const int LineHeight = 36;
     private const int HeaderHeight = 48;
-    private const int ToggleButtonWidth = 120;
-    private const int ToggleButtonHeight = 40;
+    private const int TabBarHeight = 44;
+    private const int TabWidth = 100;
     private const int ScrollStep = 40;
 
+    private static readonly PlannerTab[] AllTabs = 
+    {
+        PlannerTab.Today,
+        PlannerTab.Bundles,
+        PlannerTab.Birthdays,
+        PlannerTab.Tomorrow,
+        PlannerTab.Collections
+    };
+
     private DailySummary? _summary;
-    private bool _showAll;
+    private PlannerTab _activeTab = PlannerTab.Today;
     private int _scrollOffset;
     private int _contentHeight;
 
     private Rectangle _panelBounds;
-    private Rectangle _toggleButtonBounds;
     private Rectangle _closeButtonBounds;
+    private readonly Rectangle[] _tabBounds = new Rectangle[5];
 
     // Birthday hover tracking
     private readonly List<(Rectangle Bounds, NpcBirthday Birthday)> _birthdayHitboxes = new();
@@ -36,6 +55,20 @@ public sealed class PlannerOverlay : IClickableMenu
 
     /// <summary>Whether the overlay is currently visible.</summary>
     public bool IsVisible { get; set; }
+
+    /// <summary>Gets or sets the active tab.</summary>
+    public PlannerTab ActiveTab
+    {
+        get => _activeTab;
+        set
+        {
+            if (_activeTab != value)
+            {
+                _activeTab = value;
+                _scrollOffset = 0;
+            }
+        }
+    }
 
     /// <summary>Initializes the overlay with screen-proportional dimensions.</summary>
     public PlannerOverlay()
@@ -53,17 +86,10 @@ public sealed class PlannerOverlay : IClickableMenu
         _hoveredBirthday = null;
     }
 
-    /// <summary>Toggle between priority and "Show All" views.</summary>
-    public void ToggleShowAll()
-    {
-        _showAll = !_showAll;
-        _scrollOffset = 0;
-    }
-
     /// <summary>Reset session state (called on game restart/load).</summary>
     public void ResetSession()
     {
-        _showAll = false;
+        _activeTab = PlannerTab.Today;
         _scrollOffset = 0;
         _summary = null;
         _birthdayHitboxes.Clear();
@@ -73,18 +99,24 @@ public sealed class PlannerOverlay : IClickableMenu
     private void RecalculateBounds()
     {
         var viewport = Game1.graphics.GraphicsDevice.Viewport;
-        int panelWidth = Math.Min(600, viewport.Width - PanelMargin * 2);
+        int panelWidth = Math.Min(650, viewport.Width - PanelMargin * 2);
         int panelHeight = Math.Min(viewport.Height - PanelMargin * 2, 800);
         int panelX = viewport.Width - panelWidth - PanelMargin;
         int panelY = PanelMargin;
 
         _panelBounds = new Rectangle(panelX, panelY, panelWidth, panelHeight);
 
-        _toggleButtonBounds = new Rectangle(
-            panelX + panelWidth - ToggleButtonWidth - 16 - 40,
-            panelY + 8,
-            ToggleButtonWidth,
-            ToggleButtonHeight);
+        // Calculate tab bounds
+        int tabStartX = panelX + 16;
+        int tabY = panelY + HeaderHeight;
+        for (int i = 0; i < AllTabs.Length; i++)
+        {
+            _tabBounds[i] = new Rectangle(
+                tabStartX + i * (TabWidth + 4),
+                tabY,
+                TabWidth,
+                TabBarHeight - 8);
+        }
 
         _closeButtonBounds = new Rectangle(
             panelX + panelWidth - 36,
@@ -135,13 +167,19 @@ public sealed class PlannerOverlay : IClickableMenu
                 _panelBounds.Width - 24, _panelBounds.Height - 24),
             new Color(80, 60, 40, 230));
 
+        // Draw header
+        DrawHeader(b);
+
+        // Draw tab bar
+        DrawTabBar(b);
+
         // Set up clipping for scroll
         var originalScissor = b.GraphicsDevice.ScissorRectangle;
         var contentArea = new Rectangle(
             _panelBounds.X + 16,
-            _panelBounds.Y + HeaderHeight,
+            _panelBounds.Y + HeaderHeight + TabBarHeight,
             _panelBounds.Width - 32,
-            _panelBounds.Height - HeaderHeight - 16);
+            _panelBounds.Height - HeaderHeight - TabBarHeight - 16);
 
         b.End();
         b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp,
@@ -152,13 +190,118 @@ public sealed class PlannerOverlay : IClickableMenu
         int x = contentArea.X;
         int maxWidth = contentArea.Width;
 
-        // Header
-        DrawHeader(b, x, ref y, maxWidth);
+        // Draw content based on active tab
+        switch (_activeTab)
+        {
+            case PlannerTab.Today:
+                DrawTodayTab(b, x, ref y, maxWidth);
+                break;
+            case PlannerTab.Bundles:
+                DrawBundlesTab(b, x, ref y, maxWidth);
+                break;
+            case PlannerTab.Birthdays:
+                DrawBirthdaysTab(b, x, ref y, maxWidth);
+                break;
+            case PlannerTab.Tomorrow:
+                DrawTomorrowTab(b, x, ref y, maxWidth);
+                break;
+            case PlannerTab.Collections:
+                DrawCollectionsTab(b, x, ref y, maxWidth);
+                break;
+        }
 
+        _contentHeight = y + _scrollOffset - contentArea.Y;
+
+        // Restore scissor rect
+        b.End();
+        b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+        b.GraphicsDevice.ScissorRectangle = originalScissor;
+
+        // Draw close button
+        DrawCloseButton(b);
+
+        // Draw scroll indicators
+        DrawScrollIndicators(b, contentArea);
+
+        // Draw birthday tooltip if hovering
+        DrawBirthdayTooltip(b);
+
+        drawMouse(b);
+    }
+
+    private void DrawHeader(SpriteBatch b)
+    {
+        var dateStr = _summary != null
+            ? $"{_summary.Date.Season} {_summary.Date.Day}, Year {_summary.Date.Year}"
+            : "Loading...";
+        var weatherStr = _summary != null ? $" — {_summary.CurrentWeather}" : "";
+
+        Utility.drawTextWithShadow(b,
+            $"Daily Planner: {dateStr}{weatherStr}",
+            Game1.smallFont,
+            new Vector2(_panelBounds.X + 16, _panelBounds.Y + 12),
+            Color.White);
+    }
+
+    private void DrawTabBar(SpriteBatch b)
+    {
+        for (int i = 0; i < AllTabs.Length; i++)
+        {
+            var tab = AllTabs[i];
+            var bounds = _tabBounds[i];
+            var isActive = tab == _activeTab;
+
+            // Tab background
+            var bgColor = isActive ? new Color(120, 90, 60) : new Color(80, 60, 40);
+            var borderColor = isActive ? Color.Gold : Color.SaddleBrown;
+
+            IClickableMenu.drawTextureBox(b,
+                Game1.mouseCursors,
+                new Rectangle(432, 439, 9, 9),
+                bounds.X, bounds.Y,
+                bounds.Width, bounds.Height,
+                bgColor, 3f, false);
+
+            // Tab label
+            var label = GetTabLabel(tab);
+            var labelSize = Game1.smallFont.MeasureString(label);
+            var textColor = isActive ? Color.White : Color.LightGray;
+
+            Utility.drawTextWithShadow(b,
+                label,
+                Game1.smallFont,
+                new Vector2(
+                    bounds.X + (bounds.Width - labelSize.X) / 2,
+                    bounds.Y + (bounds.Height - labelSize.Y) / 2),
+                textColor);
+
+            // Active tab indicator
+            if (isActive)
+            {
+                b.Draw(Game1.staminaRect,
+                    new Rectangle(bounds.X + 4, bounds.Bottom - 3, bounds.Width - 8, 2),
+                    Color.Gold);
+            }
+        }
+    }
+
+    private static string GetTabLabel(PlannerTab tab) => tab switch
+    {
+        PlannerTab.Today => "Today",
+        PlannerTab.Bundles => "Bundles",
+        PlannerTab.Birthdays => "Birthdays",
+        PlannerTab.Tomorrow => "Tomorrow",
+        PlannerTab.Collections => "All Items",
+        _ => "?"
+    };
+
+    private void DrawTodayTab(SpriteBatch b, int x, ref int y, int maxWidth)
+    {
         // Festival notice
-        if (_summary.IsFestivalDay && _summary.FestivalName != null)
+        if (_summary!.IsFestivalDay && _summary.FestivalName != null)
         {
             DrawSectionTitle(b, $"🎉 {_summary.FestivalName}", x, ref y, Color.Gold);
+            y += SectionSpacing;
         }
 
         // Last-chance alerts (highest priority)
@@ -172,7 +315,7 @@ public sealed class PlannerOverlay : IClickableMenu
             y += SectionSpacing;
         }
 
-        // Today's birthdays
+        // Today's birthdays (brief)
         if (_summary.TodayBirthdays.Count > 0)
         {
             DrawSectionTitle(b, "🎂 Today's Birthdays", x, ref y, Color.HotPink);
@@ -184,114 +327,268 @@ public sealed class PlannerOverlay : IClickableMenu
                 
                 DrawText(b, $"  {bday.NpcName} (hover for gifts)", x, ref y, textColor);
                 
-                // Register hitbox for hover detection (adjusted for scroll)
                 var hitbox = new Rectangle(x, entryY, maxWidth, y - entryY);
                 _birthdayHitboxes.Add((hitbox, bday));
             }
             y += SectionSpacing;
         }
 
-        // Bundle-needed items
+        // Bundle-needed items (brief summary)
         if (_summary.BundleNeededItems.Count > 0)
         {
-            DrawSectionTitle(b, "📦 Bundle Items Available", x, ref y, Color.Yellow);
-            foreach (var item in _summary.BundleNeededItems)
+            DrawSectionTitle(b, $"📦 Bundle Items Today ({_summary.BundleNeededItems.Count})", x, ref y, Color.Yellow);
+            foreach (var item in _summary.BundleNeededItems.Take(5))
             {
-                var bundleText = string.Join(", ", item.BundleNames);
                 DrawCollectibleItem(b, item, x + 16, ref y, maxWidth - 16, Color.White);
-                DrawText(b, $"    → {bundleText}", x, ref y, Color.Khaki);
+            }
+            if (_summary.BundleNeededItems.Count > 5)
+            {
+                DrawText(b, $"    ... and {_summary.BundleNeededItems.Count - 5} more (see Bundles tab)", x, ref y, Color.Khaki);
             }
             y += SectionSpacing;
         }
 
         // Available fish
         DrawSectionTitle(b, $"🐟 Fish ({_summary.AvailableFish.Count})", x, ref y, Color.Cyan);
-        foreach (var fish in _summary.AvailableFish)
+        foreach (var fish in _summary.AvailableFish.Take(8))
         {
             DrawCollectibleItem(b, fish, x + 16, ref y, maxWidth - 16, Color.White);
+        }
+        if (_summary.AvailableFish.Count > 8)
+        {
+            DrawText(b, $"    ... and {_summary.AvailableFish.Count - 8} more", x, ref y, Color.LightGray);
         }
         y += SectionSpacing;
 
         // Available forageables
         DrawSectionTitle(b, $"🌿 Forageables ({_summary.AvailableForageables.Count})", x, ref y, Color.LimeGreen);
-        foreach (var forage in _summary.AvailableForageables)
+        foreach (var forage in _summary.AvailableForageables.Take(8))
         {
             DrawCollectibleItem(b, forage, x + 16, ref y, maxWidth - 16, Color.White);
         }
+        if (_summary.AvailableForageables.Count > 8)
+        {
+            DrawText(b, $"    ... and {_summary.AvailableForageables.Count - 8} more", x, ref y, Color.LightGray);
+        }
         y += SectionSpacing;
+    }
 
-        // Upcoming birthdays
+    private void DrawBundlesTab(SpriteBatch b, int x, ref int y, int maxWidth)
+    {
+        DrawSectionTitle(b, "📦 Bundle Items Available Today", x, ref y, Color.Yellow);
+        y += 8;
+
+        if (_summary!.BundleNeededItems.Count == 0)
+        {
+            DrawText(b, "  No bundle items available today.", x, ref y, Color.LightGray);
+            DrawText(b, "  All bundles may be complete, or today's", x, ref y, Color.LightGray);
+            DrawText(b, "  collectibles aren't needed for bundles.", x, ref y, Color.LightGray);
+        }
+        else
+        {
+            // Group by bundle
+            var byBundle = new Dictionary<string, List<CollectibleItem>>();
+            foreach (var item in _summary.BundleNeededItems)
+            {
+                foreach (var bundleName in item.BundleNames)
+                {
+                    if (!byBundle.ContainsKey(bundleName))
+                        byBundle[bundleName] = new List<CollectibleItem>();
+                    byBundle[bundleName].Add(item);
+                }
+            }
+
+            foreach (var (bundleName, items) in byBundle.OrderBy(kvp => kvp.Key))
+            {
+                DrawText(b, $"  {bundleName}:", x, ref y, Color.Gold);
+                foreach (var item in items)
+                {
+                    DrawCollectibleItem(b, item, x + 32, ref y, maxWidth - 32, Color.White);
+                }
+                y += 8;
+            }
+        }
+        y += SectionSpacing;
+    }
+
+    private void DrawBirthdaysTab(SpriteBatch b, int x, ref int y, int maxWidth)
+    {
+        // Today's birthdays with full gift lists
+        if (_summary!.TodayBirthdays.Count > 0)
+        {
+            DrawSectionTitle(b, "🎂 Today's Birthdays", x, ref y, Color.HotPink);
+            foreach (var bday in _summary.TodayBirthdays)
+            {
+                var entryY = y;
+                var isHovered = _hoveredBirthday == bday;
+                var textColor = isHovered ? Color.Yellow : Color.White;
+                
+                DrawText(b, $"  ★ {bday.NpcName}", x, ref y, textColor);
+                
+                // Show gifts inline
+                if (bday.LovedGifts.Count > 0)
+                {
+                    DrawText(b, $"    Loved: {string.Join(", ", bday.LovedGifts.Take(4))}", x, ref y, Color.LightPink);
+                }
+                if (bday.LikedGifts.Count > 0)
+                {
+                    DrawText(b, $"    Liked: {string.Join(", ", bday.LikedGifts.Take(4))}", x, ref y, Color.Khaki);
+                }
+                
+                var hitbox = new Rectangle(x, entryY, maxWidth, y - entryY);
+                _birthdayHitboxes.Add((hitbox, bday));
+                y += 8;
+            }
+            y += SectionSpacing;
+        }
+        else
+        {
+            DrawSectionTitle(b, "🎂 No Birthdays Today", x, ref y, Color.Gray);
+            y += SectionSpacing;
+        }
+
+        // Upcoming birthdays with more detail
+        DrawSectionTitle(b, "📅 Upcoming Birthdays", x, ref y, Color.Violet);
         if (_summary.UpcomingBirthdays.Count > 0)
         {
-            DrawSectionTitle(b, "📅 Upcoming Birthdays", x, ref y, Color.Violet);
             foreach (var bday in _summary.UpcomingBirthdays)
             {
                 var entryY = y;
                 var isHovered = _hoveredBirthday == bday;
                 var textColor = isHovered ? Color.Yellow : Color.White;
                 
-                DrawText(b, $"  {bday.NpcName} — {bday.BirthdayDate} (hover)", x, ref y, textColor);
+                DrawText(b, $"  {bday.BirthdayDate}: {bday.NpcName}", x, ref y, textColor);
                 
-                // Register hitbox for hover detection
+                if (isHovered && bday.LovedGifts.Count > 0)
+                {
+                    DrawText(b, $"    ❤ {string.Join(", ", bday.LovedGifts.Take(3))}", x, ref y, Color.LightPink);
+                }
+                
                 var hitbox = new Rectangle(x, entryY, maxWidth, y - entryY);
                 _birthdayHitboxes.Add((hitbox, bday));
             }
+        }
+        else
+        {
+            DrawText(b, "  No upcoming birthdays in the next 7 days.", x, ref y, Color.LightGray);
+        }
+        y += SectionSpacing;
+    }
+
+    private void DrawTomorrowTab(SpriteBatch b, int x, ref int y, int maxWidth)
+    {
+        if (_summary!.TomorrowPreview == null)
+        {
+            DrawSectionTitle(b, "🔮 Tomorrow's Preview", x, ref y, Color.MediumPurple);
+            DrawText(b, "  Preview not available.", x, ref y, Color.LightGray);
+            return;
+        }
+
+        var preview = _summary.TomorrowPreview;
+
+        DrawSectionTitle(b, "🔮 Tomorrow's Forecast", x, ref y, Color.MediumPurple);
+        DrawText(b, $"  Weather: {preview.WeatherForecast}", x, ref y, Color.White);
+        y += SectionSpacing;
+
+        // Events
+        if (preview.Events.Count > 0)
+        {
+            DrawSectionTitle(b, "📅 Events", x, ref y, Color.Gold);
+            foreach (var ev in preview.Events)
+            {
+                DrawText(b, $"  • {ev}", x, ref y, Color.White);
+            }
             y += SectionSpacing;
         }
 
-        // Tomorrow preview
-        if (_summary.TomorrowPreview != null)
+        // Season change warning
+        if (preview.SeasonChangeWarning != null)
         {
-            DrawSectionTitle(b, "🔮 Tomorrow", x, ref y, Color.MediumPurple);
-            DrawText(b, $"  Weather: {_summary.TomorrowPreview.WeatherForecast}", x, ref y, Color.White);
-
-            if (_summary.TomorrowPreview.Events.Count > 0)
-            {
-                foreach (var ev in _summary.TomorrowPreview.Events)
-                    DrawText(b, $"  {ev}", x, ref y, Color.Gold);
-            }
-
-            if (_summary.TomorrowPreview.SeasonChangeWarning != null)
-                DrawText(b, $"  ⚠ {_summary.TomorrowPreview.SeasonChangeWarning}", x, ref y, Color.OrangeRed);
-
-            if (_summary.TomorrowPreview.NewCollectibles.Count > 0)
-            {
-                DrawText(b, $"  New tomorrow: {_summary.TomorrowPreview.NewCollectibles.Count} item(s)", x, ref y, Color.LightGreen);
-            }
+            DrawSectionTitle(b, "⚠ Season Warning", x, ref y, Color.OrangeRed);
+            DrawText(b, $"  {preview.SeasonChangeWarning}", x, ref y, Color.OrangeRed);
             y += SectionSpacing;
         }
 
-        // "Show All" collection items
-        if (_showAll && _summary.AllCollectionItems.Count > 0)
+        // New collectibles tomorrow
+        if (preview.NewCollectibles.Count > 0)
         {
-            DrawSectionTitle(b, "📋 All Collection Items", x, ref y, Color.Yellow);
-            foreach (var item in _summary.AllCollectionItems)
+            DrawSectionTitle(b, "🆕 New Tomorrow", x, ref y, Color.LightGreen);
+            foreach (var item in preview.NewCollectibles)
             {
                 DrawCollectibleItem(b, item, x + 16, ref y, maxWidth - 16, Color.White);
             }
             y += SectionSpacing;
         }
 
-        _contentHeight = y + _scrollOffset - contentArea.Y;
+        // Unavailable tomorrow (expiring items)
+        if (preview.ExpiringItems.Count > 0)
+        {
+            DrawSectionTitle(b, "❌ Last Day for These", x, ref y, Color.OrangeRed);
+            foreach (var item in preview.ExpiringItems)
+            {
+                DrawCollectibleItem(b, item, x + 16, ref y, maxWidth - 16, Color.OrangeRed);
+            }
+            y += SectionSpacing;
+        }
+    }
 
-        // Restore scissor rect
-        b.End();
-        b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
-        b.GraphicsDevice.ScissorRectangle = originalScissor;
+    private void DrawCollectionsTab(SpriteBatch b, int x, ref int y, int maxWidth)
+    {
+        DrawSectionTitle(b, "📋 All Collection Items", x, ref y, Color.Yellow);
+        y += 8;
 
-        // Draw toggle button
-        DrawToggleButton(b);
+        if (_summary!.AllCollectionItems.Count == 0)
+        {
+            DrawText(b, "  No collection data available.", x, ref y, Color.LightGray);
+        }
+        else
+        {
+            // Group by collection status
+            var collected = _summary.AllCollectionItems.Where(i => i.CollectionStatus == CollectionStatus.EverCollected).ToList();
+            var inInventory = _summary.AllCollectionItems.Where(i => i.CollectionStatus == CollectionStatus.InInventory).ToList();
+            var notCollected = _summary.AllCollectionItems.Where(i => i.CollectionStatus == CollectionStatus.NotCollected).ToList();
 
-        // Draw close button
-        DrawCloseButton(b);
+            // Summary
+            DrawText(b, $"  Total: {_summary.AllCollectionItems.Count} | Collected: {collected.Count} | Remaining: {notCollected.Count}", x, ref y, Color.White);
+            y += SectionSpacing;
 
-        // Draw scroll indicators
-        DrawScrollIndicators(b, contentArea);
+            // Not collected (priority)
+            if (notCollected.Count > 0)
+            {
+                DrawText(b, $"  ○ Not Yet Collected ({notCollected.Count}):", x, ref y, Color.LightCoral);
+                foreach (var item in notCollected)
+                {
+                    DrawCollectibleItem(b, item, x + 32, ref y, maxWidth - 32, Color.White);
+                }
+                y += SectionSpacing;
+            }
 
-        // Draw birthday tooltip if hovering
-        DrawBirthdayTooltip(b);
+            // In inventory
+            if (inInventory.Count > 0)
+            {
+                DrawText(b, $"  ★ In Inventory ({inInventory.Count}):", x, ref y, Color.LightGreen);
+                foreach (var item in inInventory)
+                {
+                    DrawCollectibleItem(b, item, x + 32, ref y, maxWidth - 32, Color.White);
+                }
+                y += SectionSpacing;
+            }
 
-        drawMouse(b);
+            // Already collected
+            if (collected.Count > 0)
+            {
+                DrawText(b, $"  ✓ Already Collected ({collected.Count}):", x, ref y, Color.Gray);
+                foreach (var item in collected.Take(20))
+                {
+                    DrawCollectibleItem(b, item, x + 32, ref y, maxWidth - 32, Color.DarkGray);
+                }
+                if (collected.Count > 20)
+                {
+                    DrawText(b, $"    ... and {collected.Count - 20} more", x, ref y, Color.DarkGray);
+                }
+            }
+        }
+        y += SectionSpacing;
     }
 
     private void DrawBirthdayTooltip(SpriteBatch b)
@@ -378,21 +675,6 @@ public sealed class PlannerOverlay : IClickableMenu
         }
     }
 
-    private void DrawHeader(SpriteBatch b, int x, ref int y, int maxWidth)
-    {
-        var dateStr = _summary != null
-            ? $"{_summary.Date.Season} {_summary.Date.Day}, Year {_summary.Date.Year}"
-            : "Loading...";
-        var weatherStr = _summary != null ? $" — {_summary.CurrentWeather}" : "";
-
-        Utility.drawTextWithShadow(b,
-            $"Daily Planner: {dateStr}{weatherStr}",
-            Game1.smallFont,
-            new Vector2(x, y),
-            Color.White);
-        y += LineHeight + 4;
-    }
-
     private void DrawSectionTitle(SpriteBatch b, string title, int x, ref int y, Color color)
     {
         Utility.drawTextWithShadow(b, title, Game1.smallFont, new Vector2(x, y), color);
@@ -429,25 +711,6 @@ public sealed class PlannerOverlay : IClickableMenu
             new Vector2(x, y),
             color);
         y += LineHeight - 4;
-    }
-
-    private void DrawToggleButton(SpriteBatch b)
-    {
-        var label = _showAll ? "Priority" : "Show All";
-        IClickableMenu.drawTextureBox(b,
-            Game1.mouseCursors,
-            new Rectangle(432, 439, 9, 9),
-            _toggleButtonBounds.X, _toggleButtonBounds.Y,
-            _toggleButtonBounds.Width, _toggleButtonBounds.Height,
-            Color.White, 4f, false);
-
-        Utility.drawTextWithShadow(b,
-            label,
-            Game1.smallFont,
-            new Vector2(
-                _toggleButtonBounds.X + (_toggleButtonBounds.Width - Game1.smallFont.MeasureString(label).X) / 2,
-                _toggleButtonBounds.Y + 8),
-            Color.White);
     }
 
     private void DrawCloseButton(SpriteBatch b)
@@ -494,12 +757,16 @@ public sealed class PlannerOverlay : IClickableMenu
             return;
         }
 
-        if (_toggleButtonBounds.Contains(x, y))
+        // Check tab clicks
+        for (int i = 0; i < AllTabs.Length; i++)
         {
-            ToggleShowAll();
-            if (playSound)
-                Game1.playSound("smallSelect");
-            return;
+            if (_tabBounds[i].Contains(x, y))
+            {
+                ActiveTab = AllTabs[i];
+                if (playSound)
+                    Game1.playSound("smallSelect");
+                return;
+            }
         }
     }
 
@@ -509,7 +776,7 @@ public sealed class PlannerOverlay : IClickableMenu
         _scrollOffset -= direction > 0 ? ScrollStep : -ScrollStep;
         _scrollOffset = Math.Max(0, _scrollOffset);
 
-        var maxScroll = Math.Max(0, _contentHeight - (_panelBounds.Height - HeaderHeight - 16));
+        var maxScroll = Math.Max(0, _contentHeight - (_panelBounds.Height - HeaderHeight - TabBarHeight - 16));
         _scrollOffset = Math.Min(_scrollOffset, maxScroll);
     }
 }
