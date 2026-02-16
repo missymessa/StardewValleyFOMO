@@ -249,6 +249,13 @@ public sealed class ModEntry : StardewModdingAPI.Mod
             Game1.playSound("bigDeSelect");
             Helper.Input.Suppress(e.Button);
         }
+        // Suppress right-click and action buttons to prevent game interactions while overlay is open
+        else if (e.Button == SButton.MouseRight || 
+                 e.Button.IsActionButton() || 
+                 e.Button.IsUseToolButton())
+        {
+            Helper.Input.Suppress(e.Button);
+        }
     }
 
     private void OnMouseWheelScrolled(object? sender, MouseWheelScrolledEventArgs e)

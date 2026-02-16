@@ -105,6 +105,35 @@ public sealed class PerfectionCalculatorService
         };
     }
 
+    /// <summary>
+    /// Gets the incomplete items for a specific category.
+    /// </summary>
+    public IReadOnlyList<string> GetIncompleteItems(string categoryName, int maxItems = 10)
+    {
+        return categoryName.ToLowerInvariant() switch
+        {
+            "shipping" => GetShippingIncomplete(maxItems),
+            "fish" => _fishService.GetUncaughtFish().Take(maxItems).Select(f => f.DisplayName).ToList(),
+            "cooking" => _cookingService.GetUncookedRecipes().Take(maxItems).Select(r => r.DisplayName).ToList(),
+            "crafting" => _craftingService.GetUncraftedRecipes().Take(maxItems).Select(r => r.DisplayName).ToList(),
+            "friendship" => _friendshipService.GetIncompleteFriendships().Take(maxItems).Select(f => $"{f.NpcName} ({f.CurrentHearts}/{f.MaxHearts}♥)").ToList(),
+            "buildings" => _buildingService.GetUnbuiltBuildings().Take(maxItems).Select(b => b.DisplayName).ToList(),
+            "monster slayer" => _monsterService.GetIncompleteGoals().Take(maxItems).Select(g => $"{g.DisplayName} ({g.CurrentKills}/{g.RequiredKills})").ToList(),
+            "stardrops" => _stardropService.GetUncollectedStardrops().Take(maxItems).Select(s => s.DisplayName).ToList(),
+            "golden walnuts" => _walnutService.GetRemainingWalnutGroups().Take(maxItems).Select(g => $"{g.DisplayName} ({g.CollectedCount}/{g.TotalCount})").ToList(),
+            "skills" => _skillService.GetIncompleteSkills().Take(maxItems).Select(s => $"{s.SkillName} (Level {s.CurrentLevel})").ToList(),
+            _ => Array.Empty<string>().ToList()
+        };
+    }
+
+    private List<string> GetShippingIncomplete(int maxItems)
+    {
+        // Shipping doesn't have detailed items yet, return a generic message
+        var progress = _shippingService.GetProgress();
+        var remaining = progress.TotalCount - progress.CurrentCount;
+        return new List<string> { $"{remaining} items remaining to ship" };
+    }
+
     private static double CalculateTotalPercentage(IReadOnlyList<PerfectionCategory> categories)
     {
         // Sum of (category percent complete * category weight / 100)

@@ -64,6 +64,10 @@ public sealed class PlannerOverlay : IClickableMenu
     private readonly List<(Rectangle Bounds, NpcBirthday Birthday)> _birthdayHitboxes = new();
     private NpcBirthday? _hoveredBirthday;
 
+    // Perfection category expansion tracking
+    private readonly HashSet<string> _expandedPerfectionCategories = new();
+    private readonly List<(Rectangle Bounds, string CategoryName)> _perfectionCategoryHitboxes = new();
+
     /// <summary>Whether the overlay is currently visible.</summary>
     public bool IsVisible { get; set; }
 
@@ -767,6 +771,9 @@ public sealed class PlannerOverlay : IClickableMenu
 
     private void DrawPerfectionTab(SpriteBatch b, int x, ref int y, int maxWidth)
     {
+        // Clear hitboxes for this frame
+        _perfectionCategoryHitboxes.Clear();
+
         if (_perfectionService == null)
         {
             DrawSectionTitle(b, "🎯 Perfection Tracker", x, ref y, Color.Yellow);
@@ -800,8 +807,11 @@ public sealed class PlannerOverlay : IClickableMenu
             y += SectionSpacing;
         }
 
-        // Category breakdown
+        // Hint text
+        DrawText(b, "  (Click a category to expand)", x, ref y, Color.Gray);
         y += 8;
+
+        // Category breakdown
         foreach (var category in progress.Categories)
         {
             DrawPerfectionCategory(b, category, x, ref y, maxWidth);
@@ -810,14 +820,38 @@ public sealed class PlannerOverlay : IClickableMenu
 
     private void DrawPerfectionCategory(SpriteBatch b, PerfectionCategory category, int x, ref int y, int maxWidth)
     {
+        var isExpanded = _expandedPerfectionCategories.Contains(category.CategoryName);
+        var expandIcon = isExpanded ? "▼" : "▶";
         var statusIcon = category.IsComplete ? "✓" : "○";
         var color = category.IsComplete ? Color.LightGreen : Color.White;
         var percentText = $"{category.PercentComplete:F1}%";
         var countText = $"({category.CurrentCount}/{category.TotalCount})";
         var weightText = $"[{category.Weight:F0}%]";
 
-        var line = $"  {statusIcon} {category.CategoryName}: {percentText} {countText} {weightText}";
+        // Store starting Y for hitbox
+        var categoryStartY = y;
+
+        var line = $"  {expandIcon} {statusIcon} {category.CategoryName}: {percentText} {countText} {weightText}";
         DrawText(b, line, x, ref y, color);
+
+        // Register hitbox for this category (adjusted for scroll offset)
+        var hitbox = new Rectangle(x, categoryStartY, maxWidth, LineHeight);
+        _perfectionCategoryHitboxes.Add((hitbox, category.CategoryName));
+
+        // If expanded and not complete, show incomplete items
+        if (isExpanded && !category.IsComplete && _perfectionService != null)
+        {
+            var incompleteItems = _perfectionService.GetIncompleteItems(category.CategoryName, 8);
+            foreach (var item in incompleteItems)
+            {
+                DrawText(b, $"      • {item}", x, ref y, Color.LightGray);
+            }
+            if (category.TotalCount - category.CurrentCount > incompleteItems.Count)
+            {
+                var remaining = category.TotalCount - category.CurrentCount - incompleteItems.Count;
+                DrawText(b, $"      ... and {remaining} more", x, ref y, Color.DarkGray);
+            }
+        }
     }
 
     private void DrawProgressBar(SpriteBatch b, int x, int y, int width, int height, double fillPercent)
@@ -1026,6 +1060,25 @@ public sealed class PlannerOverlay : IClickableMenu
             if (playSound)
                 Game1.playSound("smallSelect");
             return;
+        }
+
+        // Check perfection category clicks (only on Perfection tab)
+        if (_activeTab == PlannerTab.Perfection)
+        {
+            foreach (var (bounds, categoryName) in _perfectionCategoryHitboxes)
+            {
+                if (bounds.Contains(x, y))
+                {
+                    if (_expandedPerfectionCategories.Contains(categoryName))
+                        _expandedPerfectionCategories.Remove(categoryName);
+                    else
+                        _expandedPerfectionCategories.Add(categoryName);
+
+                    if (playSound)
+                        Game1.playSound("smallSelect");
+                    return;
+                }
+            }
         }
     }
 
