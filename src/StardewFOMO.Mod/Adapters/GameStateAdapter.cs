@@ -213,20 +213,20 @@ public sealed class GameStateAdapter : IGameStateProvider
         var events = new List<string>();
 
         if (IsTravelingMerchantDay())
-            events.Add("🛒 Traveling Merchant (Cindersap Forest)");
+            events.Add("Traveling Merchant (Cindersap Forest)");
 
         if (IsNightMarketDay())
-            events.Add("🌙 Night Market (Beach, 5PM-2AM)");
+            events.Add("Night Market (Beach, 5PM-2AM)");
 
         if (IsQueenOfSauceDay())
         {
             var recipe = GetQueenOfSauceRecipe();
-            events.Add($"📺 Queen of Sauce ({recipe ?? "TV"})");
+            events.Add($"Queen of Sauce ({recipe ?? "TV"})");
         }
 
         // Check for Krobus shop special (Wednesdays have dishes)
         if (Game1.dayOfMonth % 7 == 3)
-            events.Add("🏪 Krobus has special dishes today");
+            events.Add("Krobus has special dishes today");
 
         return events.AsReadOnly();
     }
@@ -237,18 +237,18 @@ public sealed class GameStateAdapter : IGameStateProvider
         var events = new List<string>();
 
         if (IsTomorrowTravelingMerchantDay())
-            events.Add("🛒 Traveling Merchant visits tomorrow");
+            events.Add("Traveling Merchant visits tomorrow");
 
         if (IsTomorrowNightMarketDay())
-            events.Add("🌙 Night Market tomorrow (Beach, 5PM-2AM)");
+            events.Add("Night Market tomorrow (Beach, 5PM-2AM)");
 
         if (IsTomorrowQueenOfSauceDay())
-            events.Add("📺 Queen of Sauce airs tomorrow");
+            events.Add("Queen of Sauce airs tomorrow");
 
         // Check for Krobus shop special tomorrow
         var tomorrow = GetCurrentDate().GetTomorrow();
         if (tomorrow.Day % 7 == 3)
-            events.Add("🏪 Krobus has special dishes tomorrow");
+            events.Add("Krobus has special dishes tomorrow");
 
         return events.AsReadOnly();
     }

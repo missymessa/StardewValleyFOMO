@@ -12,6 +12,22 @@ public sealed class FakeRecipeRepository : IRecipeRepository
     public void AddCookingRecipe(RecipeInfo recipe) => _cookingRecipes.Add(recipe);
     public void AddCraftingRecipe(RecipeInfo recipe) => _craftingRecipes.Add(recipe);
 
+    /// <summary>Add a simple cooking recipe with just an ID for testing.</summary>
+    public void AddCookingRecipe(string recipeId) => _cookingRecipes.Add(new RecipeInfo
+    {
+        RecipeId = recipeId,
+        Name = recipeId,
+        IsCookingRecipe = true
+    });
+
+    /// <summary>Add a simple crafting recipe with just an ID for testing.</summary>
+    public void AddCraftingRecipe(string recipeId) => _craftingRecipes.Add(new RecipeInfo
+    {
+        RecipeId = recipeId,
+        Name = recipeId,
+        IsCookingRecipe = false
+    });
+
     public IReadOnlyList<RecipeInfo> GetAllCookingRecipes() => _cookingRecipes.AsReadOnly();
     public IReadOnlyList<RecipeInfo> GetAllCraftingRecipes() => _craftingRecipes.AsReadOnly();
 

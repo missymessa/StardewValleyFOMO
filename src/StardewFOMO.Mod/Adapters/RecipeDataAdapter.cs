@@ -1,4 +1,5 @@
 using StardewValley;
+using StardewValley.TokenizableStrings;
 using StardewFOMO.Core.Interfaces;
 using StardewFOMO.Core.Models;
 
@@ -86,15 +87,40 @@ public sealed class RecipeDataAdapter : IRecipeRepository
             }
         }
 
-        // Display name: for cooking, field index varies; use recipe name as fallback
-        var displayName = recipeName;
-        if (isCooking && fields.Length > 4)
-            displayName = fields[4].Trim();
-        else if (!isCooking && fields.Length > 4)
-            displayName = fields[4].Trim();
+        // Get output item ID to determine display name
+        // Crafting: field[1] has output item ID (possibly with quantity like "456 2")
+        // Cooking: field[2] has output item ID
+        string? outputItemId = null;
+        if (!isCooking && fields.Length > 1)
+        {
+            var outputParts = fields[1].Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (outputParts.Length > 0)
+                outputItemId = outputParts[0];
+        }
+        else if (isCooking && fields.Length > 2)
+        {
+            var outputParts = fields[2].Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (outputParts.Length > 0)
+                outputItemId = outputParts[0];
+        }
 
-        if (string.IsNullOrEmpty(displayName))
-            displayName = recipeName;
+        // Look up display name from item data, fall back to recipe name
+        string displayName = recipeName;
+        if (!string.IsNullOrEmpty(outputItemId))
+        {
+            // Check regular objects
+            if (Game1.objectData?.TryGetValue(outputItemId, out var objInfo) == true && 
+                !string.IsNullOrEmpty(objInfo.DisplayName))
+            {
+                displayName = TokenParser.ParseText(objInfo.DisplayName) ?? recipeName;
+            }
+            // Check big craftables
+            else if (Game1.bigCraftableData?.TryGetValue(outputItemId, out var bigInfo) == true && 
+                     !string.IsNullOrEmpty(bigInfo.DisplayName))
+            {
+                displayName = TokenParser.ParseText(bigInfo.DisplayName) ?? recipeName;
+            }
+        }
 
         return new RecipeInfo
         {

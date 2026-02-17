@@ -11,13 +11,25 @@ public sealed class CollectionAdapter : ICollectionRepository
     /// <inheritdoc/>
     public bool HasCaughtFish(string fishId)
     {
-        return Game1.player.fishCaught.ContainsKey(fishId);
+        // SDV 1.6 uses qualified IDs like "(O)128" in fishCaught
+        // But Data\Fish uses unqualified IDs like "128"
+        if (Game1.player.fishCaught.ContainsKey(fishId))
+            return true;
+        
+        // Try with qualified object ID prefix
+        var qualifiedId = fishId.StartsWith("(O)") ? fishId : $"(O){fishId}";
+        return Game1.player.fishCaught.ContainsKey(qualifiedId);
     }
 
     /// <inheritdoc/>
     public bool HasShippedItem(string itemId)
     {
-        return Game1.player.basicShipped.ContainsKey(itemId);
+        // Same pattern for shipping - try both qualified and unqualified
+        if (Game1.player.basicShipped.ContainsKey(itemId))
+            return true;
+        
+        var qualifiedId = itemId.StartsWith("(O)") ? itemId : $"(O){itemId}";
+        return Game1.player.basicShipped.ContainsKey(qualifiedId);
     }
 
     /// <inheritdoc/>
