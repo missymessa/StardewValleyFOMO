@@ -1,7 +1,7 @@
 {
   "Name": "Stardew FOMO - Daily Planner",
   "Author": "missymessa",
-  "Version": "1.0.6",
+  "Version": "1.0.7",
   "Description": "A daily planner that shows available collectibles, bundle needs, NPC birthdays, and tomorrow's preview to eliminate FOMO.",
   "UniqueID": "StardewFOMO.DailyPlanner",
   "EntryDll": "StardewFOMO.Mod.dll",
