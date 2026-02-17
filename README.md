@@ -16,12 +16,19 @@ A SMAPI mod for Stardew Valley that helps players track collectibles, upcoming e
 ### 🎁 Community Center Bundle Tracker
 - **Room Progress Overview**: View all 6 Community Center rooms with progress bars showing completion percentage
 - **Bundle Details**: Each bundle shows X/Y item counts with visual completion indicators
-- **Item Requirements**: Expand bundles to see exactly which items are still needed, including quality requirements (Silver ☆, Gold ★, Iridium ◆)
+- **Item Requirements**: Expand bundles to see exactly which items are still needed, including quality requirements (Silver, Gold, Iridium)
 - **OR Requirements**: Remixed bundles display alternative item options ("Item A or Item B")
-- **Owned Item Highlighting**: Items you have in inventory or storage show "★ [HAVE]" indicator
-- **"Available Today" Filter**: Toggle to show only bundles with items obtainable based on current season, weather, and time
+- **Owned Item Highlighting**: Items you have in inventory or storage show "[HAVE]" indicator
+- **Available Today Section**: Shows bundle items obtainable based on current season, weather, and time
 - **Bundle Pickup Notifications**: Get a HUD message when you pick up an item needed for a bundle
 - **Joja Route Handling**: Gracefully displays a message if you chose the Joja Mart path
+
+### 🎯 Perfection Tracker
+- **Overall Progress**: Track your progress toward 100% perfection with a visual progress bar
+- **10 Categories**: Shipping, Fish, Cooking, Crafting, Friendship, Buildings, Monster Slayer, Stardrops, Golden Walnuts, Skills
+- **Expandable Details**: Click any category to see exactly what items remain to complete
+- **Real-time Updates**: Progress updates as you play
+- **Ginger Island Status**: Shows if Ginger Island is unlocked (required for Golden Walnuts)
 
 ### 🎂 NPC Birthday Reminders
 - Shows today's birthdays with gift suggestions
@@ -57,9 +64,9 @@ A SMAPI mod for Stardew Valley that helps players track collectibles, upcoming e
 
 | Symbol | Meaning |
 |--------|---------|
-| ✓ [DONE] | Already collected/completed |
-| ★ [HAVE] | You have this item in inventory or storage |
-| ○ | Not yet collected |
+| + [DONE] | Already collected/completed |
+| [HAVE] | You have this item in inventory or storage |
+| o | Not yet collected |
 
 ## Configuration
 
@@ -146,10 +153,11 @@ StardewValleyFOMO/
 │   ├── StardewFOMO.Core/       # Core domain models and abstractions
 │   └── StardewFOMO.Mod/        # SMAPI mod implementation
 ├── tests/
-│   └── StardewFOMO.Core.Tests/ # Unit tests (95+ tests)
+│   └── StardewFOMO.Core.Tests/ # Unit tests (148+ tests)
 └── specs/
     ├── 001-daily-planner/      # Daily planner feature specifications
-    └── 002-bundle-tracker/     # Bundle tracker feature specifications
+    ├── 002-bundle-tracker/     # Bundle tracker feature specifications
+    └── 003-perfection-tracker/ # Perfection tracker feature specifications
 ```
 
 ## Contributing
