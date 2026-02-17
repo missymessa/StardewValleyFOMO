@@ -114,15 +114,6 @@ public sealed class ModEntry : StardewModdingAPI.Mod
             text: () => "Bundle Tracker Settings"
         );
 
-        // Availability filter default
-        gmcm.AddBoolOption(
-            mod: ModManifest,
-            getValue: () => _config.AvailabilityFilterDefault,
-            setValue: value => _config.AvailabilityFilterDefault = value,
-            name: () => "Default Availability Filter",
-            tooltip: () => "Whether to start with 'Available Today' filter enabled in Bundles tab."
-        );
-
         // Bundle notifications
         gmcm.AddBoolOption(
             mod: ModManifest,
@@ -354,8 +345,9 @@ public sealed class ModEntry : StardewModdingAPI.Mod
         var skillAdapter = new SkillAdapter();
         var buildingAdapter = new BuildingAdapter();
         var friendshipAdapter = new FriendshipAdapter();
+        var shippingAdapter = new ShippingAdapter();
 
-        var shippingService = new ShippingProgressService(collectionRepo, logger);
+        var shippingService = new ShippingProgressService(collectionRepo, shippingAdapter, logger);
         var fishService = new FishProgressService(collectionRepo, fishRepo, logger);
         var cookingService = new CookingProgressService(collectionRepo, recipeRepo, logger);
         var craftingService = new CraftingProgressService(collectionRepo, recipeRepo, logger);
@@ -394,7 +386,6 @@ public sealed class ModEntry : StardewModdingAPI.Mod
         // Wire bundle services to overlay
         _overlay.SetBundleServices(_bundleProgressService, _bundleAdapter, bundleAvailability);
         _overlay.SetPerfectionService(perfectionCalculator);
-        _overlay.SetAvailabilityFilterDefault(_config.AvailabilityFilterDefault);
 
         _isInitialized = true;
     }

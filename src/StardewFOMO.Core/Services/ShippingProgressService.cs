@@ -9,6 +9,7 @@ namespace StardewFOMO.Core.Services;
 public sealed class ShippingProgressService
 {
     private readonly ICollectionRepository _collectionRepo;
+    private readonly IShippingRepository _shippingRepo;
     private readonly ILogger _logger;
 
     // Weight contribution to overall perfection (15%)
@@ -21,10 +22,12 @@ public sealed class ShippingProgressService
     /// Initializes a new instance of the <see cref="ShippingProgressService"/> class.
     /// </summary>
     /// <param name="collectionRepo">Repository for collection data.</param>
+    /// <param name="shippingRepo">Repository for shipping item data.</param>
     /// <param name="logger">Logger instance.</param>
-    public ShippingProgressService(ICollectionRepository collectionRepo, ILogger logger)
+    public ShippingProgressService(ICollectionRepository collectionRepo, IShippingRepository shippingRepo, ILogger logger)
     {
         _collectionRepo = collectionRepo;
+        _shippingRepo = shippingRepo;
         _logger = logger;
     }
 
@@ -55,14 +58,10 @@ public sealed class ShippingProgressService
     public IReadOnlyList<ShippingItem> GetUnshippedItems()
     {
         var shippedIds = _collectionRepo.GetAllShippedItemIds();
-        var unshipped = new List<ShippingItem>();
-
-        // Note: In actual implementation, we would enumerate all shippable items
-        // and filter out the shipped ones. For now, return empty list.
-        // This would require access to game item data through an interface.
+        var unshipped = _shippingRepo.GetUnshippedItems(shippedIds);
 
         _logger.Log(LogLevel.Trace, $"Found {unshipped.Count} unshipped items");
 
-        return unshipped.AsReadOnly();
+        return unshipped;
     }
 }

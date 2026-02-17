@@ -10,6 +10,7 @@ public sealed class PerfectionCalculatorServiceTests
 {
     private readonly FakePerfectionRepository _perfectionRepo;
     private readonly FakeCollectionRepository _collectionRepo;
+    private readonly FakeShippingRepository _shippingRepo;
     private readonly FakeFishRepository _fishRepo;
     private readonly FakeRecipeRepository _recipeRepo;
     private readonly FakeFriendshipRepository _friendshipRepo;
@@ -25,6 +26,7 @@ public sealed class PerfectionCalculatorServiceTests
     {
         _perfectionRepo = new FakePerfectionRepository();
         _collectionRepo = new FakeCollectionRepository();
+        _shippingRepo = new FakeShippingRepository();
         _fishRepo = new FakeFishRepository();
         _recipeRepo = new FakeRecipeRepository();
         _friendshipRepo = new FakeFriendshipRepository();
@@ -36,7 +38,7 @@ public sealed class PerfectionCalculatorServiceTests
         _logger = new TestLogger();
 
         // Create individual progress services
-        var shippingService = new ShippingProgressService(_collectionRepo, _logger);
+        var shippingService = new ShippingProgressService(_collectionRepo, _shippingRepo, _logger);
         var fishService = new FishProgressService(_collectionRepo, _fishRepo, _logger);
         var cookingService = new CookingProgressService(_collectionRepo, _recipeRepo, _logger);
         var craftingService = new CraftingProgressService(_collectionRepo, _recipeRepo, _logger);

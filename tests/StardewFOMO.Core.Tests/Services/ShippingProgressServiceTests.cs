@@ -10,14 +10,16 @@ namespace StardewFOMO.Core.Tests.Services;
 public sealed class ShippingProgressServiceTests
 {
     private readonly FakeCollectionRepository _collectionRepo;
+    private readonly FakeShippingRepository _shippingRepo;
     private readonly TestLogger _logger;
     private readonly ShippingProgressService _service;
 
     public ShippingProgressServiceTests()
     {
         _collectionRepo = new FakeCollectionRepository();
+        _shippingRepo = new FakeShippingRepository();
         _logger = new TestLogger();
-        _service = new ShippingProgressService(_collectionRepo, _logger);
+        _service = new ShippingProgressService(_collectionRepo, _shippingRepo, _logger);
     }
 
     [Fact]
@@ -59,6 +61,11 @@ public sealed class ShippingProgressServiceTests
     [Fact]
     public void GetUnshippedItems_ReturnsItemsNotYetShipped()
     {
+        // Setup: Add some shippable items
+        _shippingRepo.AddShippableItem("Parsnip", "Parsnip");
+        _shippingRepo.AddShippableItem("Potato", "Potato");
+        _shippingRepo.AddShippableItem("Cauliflower", "Cauliflower");
+        
         // Simulate shipping some items
         _collectionRepo.AddShippedItem("Parsnip");
 
@@ -66,5 +73,8 @@ public sealed class ShippingProgressServiceTests
 
         // Should not contain Parsnip
         Assert.DoesNotContain(unshipped, item => item.ItemId == "Parsnip");
+        // Should contain Potato and Cauliflower
+        Assert.Contains(unshipped, item => item.ItemId == "Potato");
+        Assert.Contains(unshipped, item => item.ItemId == "Cauliflower");
     }
 }

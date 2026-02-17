@@ -74,7 +74,6 @@ Edit `config.json` in the mod folder:
   "ToggleKey": "F7",
   "BirthdayLookaheadDays": 7,
   "SeasonAlertDays": 3,
-  "AvailabilityFilterDefault": false,
   "EnableBundleNotifications": true
 }
 ```
@@ -84,7 +83,6 @@ Edit `config.json` in the mod folder:
 | ToggleKey | F7 | Key to open/close the planner |
 | BirthdayLookaheadDays | 7 | Days ahead to show upcoming birthdays |
 | SeasonAlertDays | 3 | Days before season end for last-chance alerts |
-| AvailabilityFilterDefault | false | Start with "Available Today" filter enabled in Bundles tab |
 | EnableBundleNotifications | true | Show HUD notification when picking up bundle items |
 
 ## Requirements

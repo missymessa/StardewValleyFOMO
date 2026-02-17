@@ -128,10 +128,11 @@ public sealed class PerfectionCalculatorService
 
     private List<string> GetShippingIncomplete(int maxItems)
     {
-        // Shipping doesn't have detailed items yet, return a generic message
-        var progress = _shippingService.GetProgress();
-        var remaining = progress.TotalCount - progress.CurrentCount;
-        return new List<string> { $"{remaining} items remaining to ship" };
+        var unshipped = _shippingService.GetUnshippedItems();
+        return unshipped
+            .Take(maxItems)
+            .Select(i => i.DisplayName)
+            .ToList();
     }
 
     private static double CalculateTotalPercentage(IReadOnlyList<PerfectionCategory> categories)

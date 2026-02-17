@@ -53,8 +53,6 @@ public sealed class PlannerOverlay : IClickableMenu
     private PlannerTab _activeTab = PlannerTab.Today;
     private int _scrollOffset;
     private int _contentHeight;
-    private bool _showAvailableTodayOnly;
-    private Rectangle _availabilityFilterButtonBounds;
 
     private Rectangle _panelBounds;
     private Rectangle _closeButtonBounds;
@@ -118,12 +116,6 @@ public sealed class PlannerOverlay : IClickableMenu
         _perfectionService = perfectionService;
     }
 
-    /// <summary>Set the default availability filter state from config.</summary>
-    public void SetAvailabilityFilterDefault(bool enabled)
-    {
-        _showAvailableTodayOnly = enabled;
-    }
-
     /// <summary>Reset session state (called on game restart/load).</summary>
     public void ResetSession()
     {
@@ -132,7 +124,6 @@ public sealed class PlannerOverlay : IClickableMenu
         _summary = null;
         _birthdayHitboxes.Clear();
         _hoveredBirthday = null;
-        _showAvailableTodayOnly = false;
     }
 
     private void RecalculateBounds()
@@ -475,12 +466,12 @@ public sealed class PlannerOverlay : IClickableMenu
         }
 
         // Today's special events
-        DrawSectionTitle(b, "📅 Today's Events", x, ref y, Color.Cyan);
+        DrawSectionTitle(b, "Today's Events", x, ref y, Color.Cyan);
         if (_summary.TodayEvents.Count > 0)
         {
             foreach (var evt in _summary.TodayEvents)
             {
-                DrawText(b, $"  {evt}", x, ref y, Color.White);
+                DrawText(b, $"  - {evt}", x, ref y, Color.White);
             }
         }
         else
@@ -553,46 +544,9 @@ public sealed class PlannerOverlay : IClickableMenu
         DrawProgressBar(b, x + 16, y, maxWidth - 32, 16, overallProgress.PercentComplete, Color.Gold);
         y += 24;
         DrawText(b, $"  {overallProgress.CompletedBundles}/{overallProgress.TotalBundles} bundles complete ({overallProgress.PercentComplete}%)", x, ref y, Color.White);
-        
-        // Availability filter toggle button
-        var filterText = _showAvailableTodayOnly ? "[✓] Available Today" : "[ ] Available Today";
-        var filterColor = _showAvailableTodayOnly ? Color.LightGreen : Color.Gray;
-        _availabilityFilterButtonBounds = new Rectangle(x + 16, y + 4, 200, 28);
-        DrawText(b, $"  {filterText}", x, ref y, filterColor);
         y += SectionSpacing;
 
-        // Draw each room
-        var roomProgressList = _bundleProgressService.GetRoomProgressList();
-        foreach (var roomProgress in roomProgressList)
-        {
-            // Room header with progress
-            var roomColor = roomProgress.IsComplete ? Color.LightGreen : Color.LightBlue;
-            var roomIcon = roomProgress.IsComplete ? "✓" : "○";
-            DrawText(b, $"  {roomIcon} {roomProgress.RoomName}", x, ref y, roomColor);
-            
-            // Room progress bar (smaller)
-            DrawProgressBar(b, x + 32, y, maxWidth - 64, 10, roomProgress.PercentComplete, 
-                roomProgress.IsComplete ? Color.LightGreen : Color.CornflowerBlue);
-            y += 16;
-
-            // Bundle details within room
-            var bundleCounts = _bundleProgressService.GetBundleCountsForRoom(roomProgress.RoomName);
-            foreach (var bundle in bundleCounts)
-            {
-                var bundleIcon = bundle.IsComplete ? "★" : "·";
-                var bundleColor = bundle.IsComplete ? Color.DarkGreen : Color.Gray;
-                var countText = bundle.IsComplete 
-                    ? "Complete" 
-                    : $"{bundle.CompletedItems}/{bundle.TotalItems}";
-                
-                DrawText(b, $"      {bundleIcon} {bundle.BundleName}: {countText}", x, ref y, bundleColor);
-            }
-            y += 8;
-        }
-
-        y += SectionSpacing;
-
-        // Legacy: Show bundle items available today (if any)
+        // Show bundle items available today (if any) - at the top for visibility
         if (_summary?.BundleNeededItems.Count > 0)
         {
             DrawSectionTitle(b, "🌟 Available Today for Bundles", x, ref y, Color.Orange);
@@ -625,6 +579,37 @@ public sealed class PlannerOverlay : IClickableMenu
             }
             y += SectionSpacing;
         }
+
+        // Draw each room
+        var roomProgressList = _bundleProgressService.GetRoomProgressList();
+        foreach (var roomProgress in roomProgressList)
+        {
+            // Room header with progress
+            var roomColor = roomProgress.IsComplete ? Color.LightGreen : Color.LightBlue;
+            var roomIcon = roomProgress.IsComplete ? "✓" : "○";
+            DrawText(b, $"  {roomIcon} {roomProgress.RoomName}", x, ref y, roomColor);
+            
+            // Room progress bar (smaller)
+            DrawProgressBar(b, x + 32, y, maxWidth - 64, 10, roomProgress.PercentComplete, 
+                roomProgress.IsComplete ? Color.LightGreen : Color.CornflowerBlue);
+            y += 16;
+
+            // Bundle details within room
+            var bundleCounts = _bundleProgressService.GetBundleCountsForRoom(roomProgress.RoomName);
+            foreach (var bundle in bundleCounts)
+            {
+                var bundleIcon = bundle.IsComplete ? "★" : "·";
+                var bundleColor = bundle.IsComplete ? Color.DarkGreen : Color.Gray;
+                var countText = bundle.IsComplete 
+                    ? "Complete" 
+                    : $"{bundle.CompletedItems}/{bundle.TotalItems}";
+                
+                DrawText(b, $"      {bundleIcon} {bundle.BundleName}: {countText}", x, ref y, bundleColor);
+            }
+            y += 8;
+        }
+
+        y += SectionSpacing;
     }
 
     /// <summary>Draw a progress bar.</summary>
@@ -786,93 +771,87 @@ public sealed class PlannerOverlay : IClickableMenu
 
         // Header with overall percentage
         var headerColor = progress.IsComplete ? Color.Gold : Color.Yellow;
-        DrawSectionTitle(b, $"🎯 Perfection: {progress.TotalPercentage:F1}%", x, ref y, headerColor);
-        y += 8;
+        DrawSectionTitle(b, "🎯 Perfection Progress", x, ref y, headerColor);
+        y += 4;
 
-        // Progress bar
-        DrawProgressBar(b, x + 16, y, maxWidth - 32, 20, progress.TotalPercentage / 100.0);
-        y += 28;
+        // Overall progress bar (same style as bundles)
+        DrawProgressBar(b, x + 16, y, maxWidth - 32, 16, (int)progress.TotalPercentage, Color.Gold);
+        y += 24;
+        DrawText(b, $"  {progress.TotalPercentage:F1}% Complete", x, ref y, Color.White);
 
         // Ginger Island status
         if (!progress.GingerIslandUnlocked)
         {
+            y += 4;
             DrawText(b, "  🏝️ Ginger Island not yet unlocked", x, ref y, Color.Orange);
-            y += 8;
         }
 
         // Congratulations message if perfect
         if (progress.IsComplete)
         {
-            DrawText(b, "  ✨ Congratulations! You've achieved 100% Perfection! ✨", x, ref y, Color.Gold);
-            y += SectionSpacing;
+            y += 4;
+            DrawText(b, "  ✨ Congratulations! 100% Perfection! ✨", x, ref y, Color.Gold);
         }
 
-        // Hint text
-        DrawText(b, "  (Click a category to expand)", x, ref y, Color.Gray);
-        y += 8;
+        y += SectionSpacing;
 
-        // Category breakdown
+        // Category breakdown (similar to room breakdown in bundles)
         foreach (var category in progress.Categories)
         {
             DrawPerfectionCategory(b, category, x, ref y, maxWidth);
         }
+
+        // Hint text at bottom
+        y += 4;
+        DrawText(b, "  (Click a category to see details)", x, ref y, Color.Gray);
     }
 
     private void DrawPerfectionCategory(SpriteBatch b, PerfectionCategory category, int x, ref int y, int maxWidth)
     {
         var isExpanded = _expandedPerfectionCategories.Contains(category.CategoryName);
-        var expandIcon = isExpanded ? "▼" : "▶";
-        var statusIcon = category.IsComplete ? "✓" : "○";
-        var color = category.IsComplete ? Color.LightGreen : Color.White;
-        var percentText = $"{category.PercentComplete:F1}%";
-        var countText = $"({category.CurrentCount}/{category.TotalCount})";
-        var weightText = $"[{category.Weight:F0}%]";
+        var statusIcon = category.IsComplete ? "+" : "o";
+        var color = category.IsComplete ? Color.LightGreen : Color.LightBlue;
 
         // Store starting Y for hitbox
         var categoryStartY = y;
 
-        var line = $"  {expandIcon} {statusIcon} {category.CategoryName}: {percentText} {countText} {weightText}";
-        DrawText(b, line, x, ref y, color);
+        // Category header line: show progress percentage prominently
+        var progressText = $"{category.PercentComplete:F0}%";
+        var countText = $"({category.CurrentCount}/{category.TotalCount})";
+        DrawText(b, $"  {statusIcon} {category.CategoryName}: {progressText} {countText}", x, ref y, color);
 
-        // Register hitbox for this category (adjusted for scroll offset)
-        var hitbox = new Rectangle(x, categoryStartY, maxWidth, LineHeight);
+        // Category progress bar (smaller, like room progress bars)
+        var barColor = category.IsComplete ? Color.LightGreen : Color.CornflowerBlue;
+        DrawProgressBar(b, x + 32, y, maxWidth - 64, 10, (int)category.PercentComplete, barColor);
+        y += 16;
+
+        // Register hitbox for this category
+        var hitbox = new Rectangle(x, categoryStartY, maxWidth, y - categoryStartY);
         _perfectionCategoryHitboxes.Add((hitbox, category.CategoryName));
 
-        // If expanded and not complete, show incomplete items
-        if (isExpanded && !category.IsComplete && _perfectionService != null)
+        // If expanded, show incomplete items with bullet points
+        if (isExpanded && _perfectionService != null)
         {
-            var incompleteItems = _perfectionService.GetIncompleteItems(category.CategoryName, 8);
-            foreach (var item in incompleteItems)
+            if (category.IsComplete)
             {
-                DrawText(b, $"      • {item}", x, ref y, Color.LightGray);
+                DrawText(b, $"      + Complete", x, ref y, Color.DarkGreen);
             }
-            if (category.TotalCount - category.CurrentCount > incompleteItems.Count)
+            else
             {
-                var remaining = category.TotalCount - category.CurrentCount - incompleteItems.Count;
-                DrawText(b, $"      ... and {remaining} more", x, ref y, Color.DarkGray);
+                var incompleteItems = _perfectionService.GetIncompleteItems(category.CategoryName, 8);
+                foreach (var item in incompleteItems)
+                {
+                    DrawText(b, $"      - {item}", x, ref y, Color.Gray);
+                }
+                if (category.TotalCount - category.CurrentCount > incompleteItems.Count)
+                {
+                    var remaining = category.TotalCount - category.CurrentCount - incompleteItems.Count;
+                    DrawText(b, $"      ... and {remaining} more", x, ref y, Color.DarkGray);
+                }
             }
         }
-    }
 
-    private void DrawProgressBar(SpriteBatch b, int x, int y, int width, int height, double fillPercent)
-    {
-        // Background
-        b.Draw(Game1.staminaRect, new Rectangle(x, y, width, height), Color.DarkGray);
-
-        // Fill
-        var fillWidth = (int)(width * Math.Min(fillPercent, 1.0));
-        if (fillWidth > 0)
-        {
-            var fillColor = fillPercent >= 1.0 ? Color.Gold : Color.LimeGreen;
-            b.Draw(Game1.staminaRect, new Rectangle(x, y, fillWidth, height), fillColor);
-        }
-
-        // Border
-        var borderColor = Color.White * 0.5f;
-        b.Draw(Game1.staminaRect, new Rectangle(x, y, width, 2), borderColor);
-        b.Draw(Game1.staminaRect, new Rectangle(x, y + height - 2, width, 2), borderColor);
-        b.Draw(Game1.staminaRect, new Rectangle(x, y, 2, height), borderColor);
-        b.Draw(Game1.staminaRect, new Rectangle(x + width - 2, y, 2, height), borderColor);
+        y += 4;
     }
 
     private void DrawBirthdayTooltip(SpriteBatch b)
@@ -1051,15 +1030,6 @@ public sealed class PlannerOverlay : IClickableMenu
                     Game1.playSound("smallSelect");
                 return;
             }
-        }
-
-        // Check availability filter toggle (only on Bundles tab)
-        if (_activeTab == PlannerTab.Bundles && _availabilityFilterButtonBounds.Contains(x, y))
-        {
-            _showAvailableTodayOnly = !_showAvailableTodayOnly;
-            if (playSound)
-                Game1.playSound("smallSelect");
-            return;
         }
 
         // Check perfection category clicks (only on Perfection tab)
